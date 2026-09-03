@@ -1,0 +1,35 @@
+# Configuração do gitleaks — Tomatempo
+# Ver docs/ESPECIFICACAO-TECNICA.md §7.5
+#
+# Roda em dois lugares: hook de pre-commit (local) e CI (action oficial).
+# O repositório é público desde o commit 1, então um segredo que passe daqui
+# está comprometido de forma permanente, mesmo que removido depois.
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "postgres-connection-string"
+description = "Connection string de Postgres com senha embutida"
+regex = '''(?i)(postgres(ql)?://[^:\s]+:[^@\s]+@)'''
+tags = ["database", "credential"]
+
+[[rules]]
+id = "dotnet-connection-string"
+description = "Connection string .NET com Password/Pwd preenchido"
+regex = '''(?i)(password|pwd)\s*=\s*(?!changeme|your[-_]?|<)[^\s;"']{6,}'''
+tags = ["database", "credential"]
+
+[allowlist]
+description = "Valores propositalmente falsos e artefatos de teste"
+paths = [
+  '''\.gitleaks\.toml$''',
+  '''\.env\.example$''',
+  '''(^|/)docs/''',
+]
+regexes = [
+  '''changeme''',
+  '''your[-_]?(client[-_]?secret|api[-_]?key|password)''',
+  '''@example\.com''',
+  '''(?i)dummy|placeholder|fake''',
+]

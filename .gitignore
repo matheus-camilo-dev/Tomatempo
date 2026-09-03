@@ -1,0 +1,38 @@
+# --- Segredos (§7.5) -------------------------------------------------------
+# Nada aqui é opcional: o repositório é público desde o commit 1.
+.env
+.env.*
+!.env.example
+secrets.json
+appsettings.*.Local.json
+*.pfx
+*.p12
+*.key
+*.pem
+# Dumps de banco nunca entram no repositório
+*.dump
+*.sql.gz
+
+# --- Node ------------------------------------------------------------------
+node_modules/
+dist/
+dist-ssr/
+coverage/
+.vite/
+*.local
+playwright-report/
+test-results/
+
+# --- .NET ------------------------------------------------------------------
+bin/
+obj/
+*.user
+*.suo
+TestResults/
+[Bb]uild[Ll]og.*
+
+# --- Ferramentas -----------------------------------------------------------
+.vs/
+.idea/
+.DS_Store
+Thumbs.db

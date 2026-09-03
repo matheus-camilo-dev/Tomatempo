@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# Tomatempo — hook de pre-commit (docs/ESPECIFICACAO-TECNICA.md §7.5)
+#
+# O repositório é PÚBLICO desde o primeiro commit. Um segredo que passe daqui
+# fica no histórico para sempre e deve ser tratado como comprometido, mesmo que
+# o commit seja desfeito em seguida.
+#
+# Instalação (uma vez por clone):
+#   git config core.hooksPath .githooks
+set -euo pipefail
+
+fail() { printf '\n\033[31m✖ commit bloqueado:\033[0m %s\n\n' "$1" >&2; exit 1; }
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$staged" ] && exit 0
+
+# ---------------------------------------------------------------------------
+# 1. Arquivos que nunca podem ser versionados
+# ---------------------------------------------------------------------------
+if printf '%s\n' "$staged" | grep -Eq '(^|/)\.env$|(^|/)\.env\.(?!example)|secrets\.json$|\.(pfx|p12|pem|key)$'; then
+  fail "arquivo de segredo no stage. Remova com 'git restore --staged <arquivo>'."
+fi
+
+# ---------------------------------------------------------------------------
+# 2. gitleaks, quando disponível (caminho preferencial)
+# ---------------------------------------------------------------------------
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --redact --config .gitleaks.toml \
+    || fail "gitleaks encontrou um segredo. Rotacione a credencial ANTES de qualquer coisa."
+  exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# 3. Fallback: varredura embutida quando gitleaks não está instalado
+#    Cobre menos casos, mas nunca deixa o repositório sem proteção alguma.
+# ---------------------------------------------------------------------------
+printf '\033[33m! gitleaks não encontrado — usando varredura embutida (menos abrangente).\033[0m\n' >&2
+printf '  Instale para proteção completa: https://github.com/gitleaks/gitleaks\n' >&2
+
+added=$(git diff --cached -U0 | grep -E '^\+[^+]' || true)
+[ -z "$added" ] && exit 0
+
+patterns='
+AKIA[0-9A-Z]{16}
+ghp_[A-Za-z0-9]{20,}
+github_pat_[A-Za-z0-9_]{20,}
+sk-[A-Za-z0-9]{20,}
+xox[baprs]-[A-Za-z0-9-]{10,}
+-----BEGIN[ A-Z]*PRIVATE KEY-----
+eyJhbGciOi[A-Za-z0-9_-]{10,}
+postgres(ql)?://[^:[:space:]]+:[^@[:space:]]+@
+(?i)(client_secret|api[_-]?key|secret[_-]?key|access[_-]?token)["'"'"']?\s*[:=]\s*["'"'"'][^"'"'"'[:space:]]{12,}
+(?i)(password|pwd)\s*=\s*[^[:space:];"'"'"']{8,}
+'
+
+while IFS= read -r pattern; do
+  [ -z "$pattern" ] && continue
+  if printf '%s\n' "$added" | grep -Eq -- "$pattern"; then
+    # Ignora valores obviamente falsos, alinhado com o allowlist do gitleaks
+    hit=$(printf '%s\n' "$added" | grep -E -- "$pattern" | head -1)
+    if printf '%s' "$hit" | grep -Eqi 'changeme|your[-_]?|@example\.com|dummy|placeholder|fake|<[a-z ]+>'; then
+      continue
+    fi
+    fail "possível segredo em linha adicionada (padrão: ${pattern:0:40}...). Se for falso positivo, revise e use 'git commit --no-verify' conscientemente."
+  fi
+done <<< "$patterns"
+
+exit 0
