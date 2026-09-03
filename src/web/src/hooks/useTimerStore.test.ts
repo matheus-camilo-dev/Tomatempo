@@ -221,4 +221,65 @@ describe('persistência', () => {
 
     expect(selectTodayTotals(store.getState()).completedPomodoros).toBe(1)
   })
+
+  it('deve continuar contando quando a gravação falha por cota estourada', () => {
+    const storage = memoryStorage()
+    storage.setItem = () => {
+      throw new DOMException('QuotaExceededError')
+    }
+    const store = createTimerStore({ storage })
+
+    store.getState().start()
+    vi.setSystemTime(START + 25 * MINUTE)
+    store.getState().sync()
+
+    expect(store.getState().timer.status).toBe('finished')
+    expect(selectTodayTotals(store.getState()).completedPomodoros).toBe(1)
+  })
+
+  it('deve descartar dado salvo em formato desconhecido', () => {
+    // JSON válido, formato errado: acontece quando o formato salvo muda de versão.
+    const storage = memoryStorage({ 'tomatempo:timer:v1': '{"timer":"formato antigo"}' })
+
+    const store = createTimerStore({ storage })
+
+    expect(store.getState().timer.status).toBe('idle')
+    expect(store.getState().timer.kind).toBe('focus')
+  })
+
+  it('deve descartar payload nulo no armazenamento', () => {
+    const storage = memoryStorage({ 'tomatempo:timer:v1': 'null' })
+
+    expect(createTimerStore({ storage }).getState().timer.status).toBe('idle')
+  })
+
+  it('deve sobreviver a navegador que lança ao acessar o localStorage', () => {
+    // Safari em navegação privada e navegadores com cookies bloqueados chegam a
+    // lançar no *acesso* à propriedade, não só na escrita.
+    const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      get() {
+        throw new DOMException('SecurityError')
+      },
+    })
+
+    try {
+      expect(() => createTimerStore()).not.toThrow()
+      expect(createTimerStore().getState().timer.status).toBe('idle')
+    } finally {
+      if (original) Object.defineProperty(globalThis, 'localStorage', original)
+    }
+  })
+
+  it('deve usar o localStorage do navegador quando nenhum armazenamento é informado', () => {
+    localStorage.clear()
+
+    createTimerStore().getState().start()
+    vi.setSystemTime(START + 10 * MINUTE)
+
+    expect(createTimerStore().getState().remainingMs).toBe(15 * MINUTE)
+
+    localStorage.clear()
+  })
 })
