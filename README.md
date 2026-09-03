@@ -26,7 +26,14 @@ npm run dev
 ```
 
 Recomendado instalar o [gitleaks](https://github.com/gitleaks/gitleaks) — o hook usa uma varredura embutida
-mais fraca quando ele não está presente.
+mais fraca quando ele não está presente. Para conferir que o hook está ativo:
+
+```bash
+# O token é gerado na hora: um literal aqui faria o próprio README ser barrado.
+printf 'GITHUB_TOKEN=ghp_%s\n' "$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 36)" > leak-probe.txt
+git add leak-probe.txt && .githooks/pre-commit   # deve bloquear
+git restore --staged leak-probe.txt && rm leak-probe.txt
+```
 
 ## Comandos
 
@@ -58,4 +65,4 @@ especificação técnica, §5.
 
 ## Licença
 
-A definir.
+[MIT](LICENSE) © 2026 Matheus Camilo Velanzuela Meira
