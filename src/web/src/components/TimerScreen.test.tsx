@@ -259,6 +259,59 @@ describe('tema', () => {
   })
 })
 
+describe('offline', () => {
+  function setOnline(value: boolean): void {
+    Object.defineProperty(globalThis.navigator, 'onLine', { configurable: true, value })
+  }
+
+  afterEach(() => setOnline(true))
+
+  it('não deve mostrar aviso enquanto há conexão', () => {
+    setup()
+
+    expect(screen.queryByTestId('offline-banner')).not.toBeInTheDocument()
+  })
+
+  it('deve avisar quando a conexão cai', () => {
+    setup()
+
+    act(() => {
+      setOnline(false)
+      globalThis.dispatchEvent(new Event('offline'))
+    })
+
+    expect(screen.getByTestId('offline-banner')).toHaveTextContent(/offline/i)
+  })
+
+  it('deve continuar contando e creditando o dia offline', () => {
+    setup()
+    act(() => {
+      setOnline(false)
+      globalThis.dispatchEvent(new Event('offline'))
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /iniciar/i }))
+    advance(25 * MINUTE)
+
+    expect(screen.getByTestId('today-summary')).toHaveTextContent(/1 pomodoro/i)
+  })
+
+  it('deve esconder o aviso ao reconectar', () => {
+    setup()
+    act(() => {
+      setOnline(false)
+      globalThis.dispatchEvent(new Event('offline'))
+    })
+
+    act(() => {
+      setOnline(true)
+      globalThis.dispatchEvent(new Event('online'))
+    })
+
+    expect(screen.queryByTestId('offline-banner')).not.toBeInTheDocument()
+  })
+})
+
 describe('acessibilidade', () => {
   it('deve anunciar a mudança de ciclo em região viva', () => {
     setup()

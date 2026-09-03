@@ -359,6 +359,9 @@ fica no `localStorage`; na fase 2 ela passa a acompanhar a conta.
 - [ ] Fim de ciclo nunca inicia o próximo sozinho.
 - [ ] App instala como PWA e abre 100% offline.
 - [ ] Lighthouse PWA e Acessibilidade ≥ 90.
+- [ ] O manifesto declara nome, ícones de 192 e 512, cor de tema e `display: standalone`.
+- [ ] Perder a conexão mostra aviso visível; reconectar faz o aviso sumir.
+- [ ] O timer continua contando e creditando o dia enquanto offline.
 - [ ] Zero strings hardcoded na UI, incluindo as mensagens de notificação.
 - [ ] Os dois catálogos têm exatamente as mesmas chaves, sem valor vazio — verificado por teste.
 - [ ] Trocar o idioma muda a tela inteira e sobrevive ao recarregamento.
