@@ -484,6 +484,25 @@ DTO e mapeamento trivial, configuração de DI, migrations geradas, wrappers de 
 estáticos testa-se só a invariante (ids únicos, contraste AA de cada preset, código de conquista sem duplicata).
 Teste sem valor é passivo: custa manutenção e some no ruído quando algo real quebra.
 
+### 6.8 Código defensivo é requisito ou não existe
+
+`try/catch`, valor padrão, checagem de nulo e fallback "por segurança" são **comportamento**, e comportamento se
+decide antes de implementar — não no meio, por instinto. A pergunta é uma só: *isto pode acontecer de verdade?*
+
+- **Pode acontecer** → é requisito. Vira teste **antes** do código, como qualquer outra regra. Exemplos reais
+  neste projeto: cota de `localStorage` estourada, formato salvo de versão anterior, navegador que lança ao
+  acessar `localStorage`, resposta da API fora do contrato.
+- **Não pode acontecer** → não se escreve. Fallback para caso impossível não protege nada: esconde a violação de
+  invariante que deveria estourar alto, e ainda mente sobre o que o sistema tolera.
+
+Quando o caso impossível parece precisar de defesa, o problema quase sempre é o tipo. `runningDateKey: string |
+null` obrigava um `?? fallback` em três lugares; `runningDateKey: string` tornou os três desnecessários. Tipo
+que descreve o estado real elimina defesa; defesa espalhada é sintoma de tipo frouxo.
+
+**Como isso é pego:** o gate de cobertura (§6.6). Branch impossível é branch sem teste, e o gate reprova. Diante
+de uma reprovação, a resposta nunca é "escrever teste até o número subir" — é decidir a que caso o branch
+pertence e então testá-lo ou removê-lo.
+
 ---
 
 ## 7. Segurança

@@ -47,6 +47,7 @@ server-validated ranking minutes · no auto-chain · ≥5min partials · next-da
 - Back: xUnit + AwesomeAssertions + NSubstitute + Testcontainers. **FluentAssertions 8 is banned (commercial license).** NSubstitute only for external ports; never mock repositories/DbContext; EF InMemory banned. `TimeProvider` injected everywhere, `DateTime.UtcNow` banned outside infrastructure.
 - Front: Vitest + Testing Library + user-event + MSW + fake timers. No mocked `fetch`, no sleeps in tests.
 - Coverage gate 90% on Tomatempo.Domain and front `src/domain`+`src/hooks`; rest measured only.
+- **Defensive code is a requirement or it does not exist.** try/catch, null checks, fallbacks are behavior: decide before implementing. Can it really happen (quota exceeded, old persisted format, storage that throws, off-contract API response)? Then it is a requirement — test first. Cannot happen? Do not write it; a fallback for an impossible case hides the invariant violation that should fail loudly. When an impossible case seems to need defense, the type is usually too loose — tighten it instead. Coverage-gate failures are resolved by deciding which case the branch belongs to, never by writing tests until the number rises. §6.8.
 - Full detail: docs/ESPECIFICACAO-TECNICA.md §6.
 
 ## Documentation rule (NON-NEGOTIABLE)
