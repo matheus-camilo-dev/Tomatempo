@@ -228,6 +228,37 @@ describe('idioma', () => {
   })
 })
 
+describe('tema', () => {
+  it('deve oferecer as três opções de tema', () => {
+    setup()
+
+    expect(screen.getByRole('button', { name: /sistema/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^claro$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^escuro$/i })).toBeInTheDocument()
+  })
+
+  it('deve marcar "sistema" como corrente por padrão', () => {
+    setup()
+
+    expect(screen.getByRole('button', { name: /sistema/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('deve aplicar o tema escuro ao escolhê-lo', () => {
+    setup()
+
+    fireEvent.click(screen.getByRole('button', { name: /^escuro$/i }))
+
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+    expect(screen.getByRole('button', { name: /^escuro$/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+})
+
 describe('acessibilidade', () => {
   it('deve anunciar a mudança de ciclo em região viva', () => {
     setup()

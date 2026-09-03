@@ -362,6 +362,10 @@ fica no `localStorage`; na fase 2 ela passa a acompanhar a conta.
 - [ ] Zero strings hardcoded na UI, incluindo as mensagens de notificação.
 - [ ] Os dois catálogos têm exatamente as mesmas chaves, sem valor vazio — verificado por teste.
 - [ ] Trocar o idioma muda a tela inteira e sobrevive ao recarregamento.
+- [ ] Sem escolha do usuário, o tema segue o sistema — e acompanha a mudança dele sem recarregar.
+- [ ] Escolher claro ou escuro sobrepõe o sistema e sobrevive ao recarregamento.
+- [ ] Voltar para "sistema" descarta a escolha e volta a seguir o sistema.
+- [ ] O seletor de tema indica a opção corrente para leitores de tela.
 
 ### Fase 2 — Conta, meta e streak
 
@@ -409,7 +413,12 @@ quem está implementando.
 
 Nenhuma linha de código de feature é escrita antes do teste que a descreve. O ciclo de toda feature é:
 
-1. Traduzir os critérios de aceite (as listas "Pronto quando" da §5) em testes que **falham**.
+1. **Transcrever os critérios de aceite item a item**, da lista "Pronto quando" da §5 para o arquivo de teste,
+   antes de pensar em qualquer código. Não de memória: lendo a lista e riscando cada linha ao cobri-la.
+   Critério sem teste correspondente significa que o commit vermelho **não está pronto** — e se durante a
+   implementação surgir um critério que a §5 não previa, ele é acrescentado à §5 antes de virar teste (§8.2).
+   Essa etapa existe porque a falha observada foi justamente escrever os critérios na spec e depois derivar os
+   testes de cabeça, deixando dois de fora sem ninguém notar até a cobertura acusar.
 2. Commit `test: <feature>` com a suíte vermelha — é a prova de que a ordem foi seguida. Sem esse commit,
    não há como distinguir TDD de teste escrito depois para justificar código pronto.
 3. Implementar até ficar verde, **sem tocar em nenhum teste**.

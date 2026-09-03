@@ -41,6 +41,7 @@ server-validated ranking minutes · no auto-chain · ≥5min partials · next-da
 ## Testing rule (NON-NEGOTIABLE — overrides convenience and speed)
 
 - **Tests come first.** For every feature and every bug fix: write failing tests, commit them red (`test: ...`), then implement until green (`feat: ...`). No feature code before its test exists.
+- **Start the red commit by transcribing the §5 "Pronto quando" criteria item by item** into the test file — reading the list and ticking each line off, never from memory. A criterion with no matching test means the red commit is not ready. If implementation reveals a criterion §5 lacks, add it to §5 first, then test it.
 - **Never touch an existing test while implementing.** A failing test means the code is wrong, not the test.
 - Two cases STOP work and require asking the user — never decide alone: (1) a business rule changed, so a test encoding the old rule must change (update docs/REGRAS-DE-NEGOCIO.md first, after approval); (2) the test itself is wrong (inverted assertion, wrong number, bad setup) while the rule stands. Both require presenting: which test, what it asserts, what the rule says, proposed fix.
 - Single exception: a purely mechanical harness defect (invalid test double, duplicate import, wrong helper type, runner config) is fixed immediately and **listed in the delivery report**. Criterion: if the fix changes what the test claims about the product, stop and ask; if it only changes how the scenario is built, fix and report. When unsure which side it falls on, it falls on asking.
