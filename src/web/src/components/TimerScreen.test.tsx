@@ -1,5 +1,4 @@
-import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTimerStore, type TimerStore } from '../hooks/useTimerStore'
@@ -23,12 +22,16 @@ function memoryStorage(): Storage {
   }
 }
 
-function setup(): { store: TimerStore; user: ReturnType<typeof userEvent.setup> } {
+/**
+ * `fireEvent` e não `user-event`: com os fake timers instalados, a promise de
+ * `user.click` nunca resolve (§6.4). Para clique em botão a diferença entre os
+ * dois é irrelevante — nenhuma regra daqui depende da sequência de pointer.
+ */
+function setup(): TimerStore {
   const store = createTimerStore({ storage: memoryStorage() })
-  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime, delay: null })
   render(<TimerScreen store={store} />)
 
-  return { store, user }
+  return store
 }
 
 /** Avança o relógio deixando o intervalo do timer rodar. */
@@ -68,27 +71,27 @@ describe('estado inicial', () => {
 })
 
 describe('ciclo de foco', () => {
-  it('deve contar o tempo depois de iniciar', async () => {
-    const { user } = setup()
+  it('deve contar o tempo depois de iniciar', () => {
+    setup()
 
-    await user.click(screen.getByRole('button', { name: /iniciar/i }))
+    fireEvent.click(screen.getByRole('button', { name: /iniciar/i }))
     advance(60_000)
 
     expect(screen.getByRole('timer')).toHaveTextContent('24:00')
   })
 
-  it('deve oferecer abandonar enquanto corre', async () => {
-    const { user } = setup()
+  it('deve oferecer abandonar enquanto corre', () => {
+    setup()
 
-    await user.click(screen.getByRole('button', { name: /iniciar/i }))
+    fireEvent.click(screen.getByRole('button', { name: /iniciar/i }))
 
     expect(screen.getByRole('button', { name: /abandonar/i })).toBeInTheDocument()
   })
 
-  it('deve encerrar ao fim e esperar o usuário, sem emendar a pausa', async () => {
-    const { user } = setup()
+  it('deve encerrar ao fim e esperar o usuário, sem emendar a pausa', () => {
+    setup()
 
-    await user.click(screen.getByRole('button', { name: /iniciar/i }))
+    fireEvent.click(screen.getByRole('button', { name: /iniciar/i }))
     advance(25 * MINUTE)
 
     expect(screen.getByRole('timer')).toHaveTextContent('00:00')
@@ -96,22 +99,22 @@ describe('ciclo de foco', () => {
     expect(screen.getByRole('button', { name: /pausa curta/i })).toBeInTheDocument()
   })
 
-  it('deve somar o pomodoro concluído ao dia', async () => {
-    const { user } = setup()
+  it('deve somar o pomodoro concluído ao dia', () => {
+    setup()
 
-    await user.click(screen.getByRole('button', { name: /iniciar/i }))
+    fireEvent.click(screen.getByRole('button', { name: /iniciar/i }))
     advance(25 * MINUTE)
 
     expect(screen.getByTestId('today-summary')).toHaveTextContent(/1 pomodoro/i)
     expect(screen.getByTestId('today-summary')).toHaveTextContent(/25 min/i)
   })
 
-  it('deve iniciar a pausa somente após o clique do usuário', async () => {
-    const { user } = setup()
-    await user.click(screen.getByRole('button', { name: /iniciar/i }))
+  it('deve iniciar a pausa somente após o clique do usuário', () => {
+    setup()
+    fireEvent.click(screen.getByRole('button', { name: /iniciar/i }))
     advance(25 * MINUTE)
 
-    await user.click(screen.getByRole('button', { name: /pausa curta/i }))
+    fireEvent.click(screen.getByRole('button', { name: /pausa curta/i }))
 
     expect(screen.getByRole('status')).toHaveTextContent(/pausa curta/i)
     expect(screen.getByRole('timer')).toHaveTextContent('05:00')
@@ -119,43 +122,43 @@ describe('ciclo de foco', () => {
 })
 
 describe('abandono', () => {
-  it('deve creditar o parcial e voltar ao início', async () => {
-    const { user } = setup()
-    await user.click(screen.getByRole('button', { name: /iniciar/i }))
+  it('deve creditar o parcial e voltar ao início', () => {
+    setup()
+    fireEvent.click(screen.getByRole('button', { name: /iniciar/i }))
     advance(20 * MINUTE)
 
-    await user.click(screen.getByRole('button', { name: /abandonar/i }))
+    fireEvent.click(screen.getByRole('button', { name: /abandonar/i }))
 
     expect(screen.getByTestId('today-summary')).toHaveTextContent(/20 min/i)
     expect(screen.getByTestId('today-summary')).toHaveTextContent(/0 pomodoros/i)
     expect(screen.getByRole('button', { name: /iniciar/i })).toBeInTheDocument()
   })
 
-  it('deve descartar parcial abaixo de 5 minutos', async () => {
-    const { user } = setup()
-    await user.click(screen.getByRole('button', { name: /iniciar/i }))
+  it('deve descartar parcial abaixo de 5 minutos', () => {
+    setup()
+    fireEvent.click(screen.getByRole('button', { name: /iniciar/i }))
     advance(3 * MINUTE)
 
-    await user.click(screen.getByRole('button', { name: /abandonar/i }))
+    fireEvent.click(screen.getByRole('button', { name: /abandonar/i }))
 
     expect(screen.getByTestId('today-summary')).toHaveTextContent(/0 min/i)
   })
 })
 
 describe('pausa longa', () => {
-  it('deve oferecer pausa longa depois do quarto pomodoro', async () => {
-    const { user } = setup()
+  it('deve oferecer pausa longa depois do quarto pomodoro', () => {
+    setup()
 
     // Três ciclos completos de foco + pausa curta.
     for (let cycle = 1; cycle <= 3; cycle++) {
-      await user.click(screen.getByRole('button', { name: /iniciar/i }))
+      fireEvent.click(screen.getByRole('button', { name: /iniciar/i }))
       advance(25 * MINUTE)
-      await user.click(screen.getByRole('button', { name: /pausa curta/i }))
+      fireEvent.click(screen.getByRole('button', { name: /pausa curta/i }))
       advance(5 * MINUTE)
     }
 
     // Quarto foco.
-    await user.click(screen.getByRole('button', { name: /iniciar foco/i }))
+    fireEvent.click(screen.getByRole('button', { name: /iniciar foco/i }))
     advance(25 * MINUTE)
 
     expect(screen.getByRole('button', { name: /pausa longa/i })).toBeInTheDocument()

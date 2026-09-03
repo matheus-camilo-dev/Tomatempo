@@ -460,6 +460,13 @@ Limites que valem como regra:
 - **No front, MSW no lugar de mock de `fetch`**: o teste exercita o cliente HTTP de verdade, incluindo
   serialização e tratamento de erro.
 - Nada de `Thread.Sleep` ou `await delay` em teste. Tempo é sempre controlado.
+- **Teste que manipula o relógio usa `fireEvent`; o resto usa `user-event`.** `user-event` e os fake timers do
+  Vitest travam entre si: a promise de `user.click` nunca resolve com o relógio falso instalado — verificado em
+  dez configurações (`advanceTimers`, `delay: null`, `toFake` restrito, `pointerEventsCheck: 0`, API direta),
+  todas com o mesmo resultado, enquanto `fireEvent` e `act` assíncrono funcionam normalmente. Onde o tempo é
+  simulado (timer, expiração, virada de dia), `fireEvent` é a escolha; onde a fidelidade da sequência de eventos
+  importa de verdade — formulário, digitação, navegação por teclado, hover —, `user-event` continua obrigatório.
+  Revisitar quando alguma das duas bibliotecas resolver a incompatibilidade.
 
 ### 6.5 Convenções
 
