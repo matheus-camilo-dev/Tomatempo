@@ -426,6 +426,12 @@ Duas situações interrompem o trabalho e vão para consulta — nunca são deci
   trocado, setup que não representa o cenário). Paro do mesmo jeito, aponto a divergência entre o teste e o
   documento de regras, proponho a correção e espero.
 
+**Única exceção — defeito mecânico do arcabouço.** Quando o problema não toca asserção nem regra, e sim a
+mecânica de montar o teste (dublê inválido, import duplicado, tipo errado no helper, configuração do runner),
+a correção é feita na hora e **listada no relatório da entrega**, sem interromper. O critério é objetivo: se
+a correção muda o que o teste afirma sobre o produto, para e consulta; se muda apenas como o cenário é
+construído, corrige e relata. Na dúvida sobre de que lado a correção cai, ela cai no lado de consultar.
+
 O que chega até você nesses casos é sempre: qual teste, o que ele afirma, o que a regra diz, e a correção
 proposta. Nunca um "ajustei o teste" enterrado no meio de um relatório de implementação.
 

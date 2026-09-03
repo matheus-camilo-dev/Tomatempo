@@ -1,8 +1,12 @@
 import type { CycleKind } from '../domain/timer'
 import { nextKind } from '../domain/timer'
-import { useTimer } from '../hooks/useTimer'
+import { useCycleEndAlerts } from '../hooks/useCycleEndAlerts'
+import { timerStore, useTimer } from '../hooks/useTimer'
 import type { TimerStore } from '../hooks/useTimerStore'
+import { createBrowserAlerts, type AlertPorts } from '../lib/alerts'
 import { formatDuration } from '../lib/formatDuration'
+
+const browserAlerts = createBrowserAlerts()
 
 const CYCLE_LABEL: Record<CycleKind, string> = {
   focus: 'Foco',
@@ -23,12 +27,15 @@ const FINISHED_LABEL: Record<CycleKind, string> = {
 }
 
 export interface TimerScreenProps {
-  /** Injetado nos testes; em produção usa o store padrão da aplicação. */
+  /** Injetados nos testes; em produção usam as implementações padrão. */
   readonly store?: TimerStore
+  readonly alerts?: AlertPorts
 }
 
-export function TimerScreen({ store }: TimerScreenProps) {
+export function TimerScreen({ store = timerStore, alerts = browserAlerts }: TimerScreenProps) {
   const { timer, remainingMs, todayTotals, start, abandon, acknowledge } = useTimer(store)
+
+  useCycleEndAlerts(store, alerts)
 
   const isRunning = timer.status === 'running'
   const isFinished = timer.status === 'finished'
@@ -37,9 +44,16 @@ export function TimerScreen({ store }: TimerScreenProps) {
   const displayMs = isFinished ? 0 : remainingMs
   const upcoming = isFinished ? nextKind(timer) : timer.kind
 
+  function beginCycle() {
+    // Destrava áudio e permissão aqui, no gesto: é a única janela em que o
+    // navegador aceita, e o alarme só vai tocar 25 minutos depois.
+    alerts.prepare()
+    start()
+  }
+
   function startNext() {
     acknowledge()
-    start()
+    beginCycle()
   }
 
   return (
@@ -86,7 +100,7 @@ export function TimerScreen({ store }: TimerScreenProps) {
       ) : (
         <button
           type="button"
-          onClick={isFinished ? startNext : start}
+          onClick={isFinished ? startNext : beginCycle}
           className="rounded-full bg-slate-900 px-8 py-3 text-base font-medium text-white transition hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 dark:bg-slate-50 dark:text-slate-900 dark:hover:bg-slate-200"
         >
           {START_LABEL[upcoming]}

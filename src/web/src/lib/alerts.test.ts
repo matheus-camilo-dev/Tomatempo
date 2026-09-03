@@ -14,11 +14,17 @@ function fakeAudio() {
     createGain: vi.fn(() => gain),
   }
 
-  return { context, oscillator, gain, Ctor: vi.fn(() => context) as unknown as new () => AudioContext }
+  // Function expression, não arrow: o código sob teste faz `new AudioContext()`,
+  // e arrow function não é construtível.
+  const Ctor = vi.fn(function () {
+    return context
+  })
+
+  return { context, oscillator, gain, Ctor: Ctor as unknown as new () => AudioContext }
 }
 
 function fakeNotification(permission: NotificationPermission) {
-  const constructed: { title: string; options?: NotificationOptions }[] = []
+  const constructed: { title: string; options: NotificationOptions | undefined }[] = []
   const requestPermission = vi.fn(async () => 'granted' as NotificationPermission)
 
   class FakeNotification {
