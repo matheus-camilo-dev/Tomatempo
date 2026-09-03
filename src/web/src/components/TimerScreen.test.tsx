@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { AlertPorts } from '../lib/alerts'
 import { createTimerStore, type TimerStore } from '../hooks/useTimerStore'
 import { TimerScreen } from './TimerScreen'
 
@@ -163,6 +164,37 @@ describe('pausa longa', () => {
 
     expect(screen.getByRole('button', { name: /pausa longa/i })).toBeInTheDocument()
     expect(screen.getByTestId('today-summary')).toHaveTextContent(/4 pomodoros/i)
+  })
+})
+
+describe('alertas', () => {
+  function setupWithAlerts(): AlertPorts {
+    const alerts: AlertPorts = {
+      prepare: vi.fn(),
+      playAlarm: vi.fn(),
+      notify: vi.fn(),
+      isHidden: () => false,
+    }
+    render(<TimerScreen store={createTimerStore({ storage: memoryStorage() })} alerts={alerts} />)
+
+    return alerts
+  }
+
+  it('deve destravar áudio e permissão no gesto de iniciar', () => {
+    const alerts = setupWithAlerts()
+
+    fireEvent.click(screen.getByRole('button', { name: /iniciar/i }))
+
+    expect(alerts.prepare).toHaveBeenCalledTimes(1)
+  })
+
+  it('deve tocar o alarme quando o ciclo termina', () => {
+    const alerts = setupWithAlerts()
+
+    fireEvent.click(screen.getByRole('button', { name: /iniciar/i }))
+    advance(25 * MINUTE)
+
+    expect(alerts.playAlarm).toHaveBeenCalledTimes(1)
   })
 })
 
