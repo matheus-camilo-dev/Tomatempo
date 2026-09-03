@@ -1,11 +1,14 @@
 @import 'tailwindcss';
 
+/*
+ * Tailwind v4 usa prefers-color-scheme por padrão. Esta variante passa o
+ * controle para a classe `.dark` no elemento raiz, que é o que permite ao
+ * usuário sobrepor o sistema (§6 das regras de negócio).
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
-html {
-  color-scheme: light dark;
 }
 
 body {
@@ -14,9 +17,7 @@ body {
   color: var(--color-slate-900);
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: var(--color-slate-900);
-    color: var(--color-slate-50);
-  }
+.dark body {
+  background-color: var(--color-slate-900);
+  color: var(--color-slate-50);
 }

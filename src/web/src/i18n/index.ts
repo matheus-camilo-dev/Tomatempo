@@ -49,6 +49,12 @@ export const resources = {
         ptBR: 'Português',
         en: 'English',
       },
+      theme: {
+        group: 'Tema',
+        system: 'Sistema',
+        light: 'Claro',
+        dark: 'Escuro',
+      },
     },
   },
   en: {
@@ -85,6 +91,12 @@ export const resources = {
         group: 'Language',
         ptBR: 'Português',
         en: 'English',
+      },
+      theme: {
+        group: 'Theme',
+        system: 'System',
+        light: 'Light',
+        dark: 'Dark',
       },
     },
   },

@@ -2,9 +2,11 @@ import { useTranslation } from 'react-i18next'
 import type { CycleKind } from '../domain/timer'
 import { POMODOROS_PER_LONG_BREAK, nextKind } from '../domain/timer'
 import { useCycleEndAlerts } from '../hooks/useCycleEndAlerts'
+import { useTheme } from '../hooks/useTheme'
 import { timerStore, useTimer } from '../hooks/useTimer'
 import type { TimerStore } from '../hooks/useTimerStore'
 import { SUPPORTED_LANGUAGES } from '../i18n'
+import { THEME_PREFERENCES } from '../lib/theme'
 import { createBrowserAlerts, type AlertPorts } from '../lib/alerts'
 import { formatDuration } from '../lib/formatDuration'
 
@@ -24,6 +26,15 @@ const START_KEY: Record<CycleKind, string> = {
 
 const LANGUAGE_KEY = { 'pt-BR': 'language.ptBR', en: 'language.en' } as const
 
+const THEME_KEY = {
+  system: 'theme.system',
+  light: 'theme.light',
+  dark: 'theme.dark',
+} as const
+
+const TOGGLE_CLASS =
+  'rounded-full px-3 py-1 transition hover:bg-slate-200 aria-pressed:font-semibold aria-pressed:text-slate-900 dark:hover:bg-slate-800 dark:aria-pressed:text-slate-50'
+
 export interface TimerScreenProps {
   /** Injetados nos testes; em produção usam as implementações padrão. */
   readonly store?: TimerStore
@@ -32,6 +43,7 @@ export interface TimerScreenProps {
 
 export function TimerScreen({ store = timerStore, alerts = browserAlerts }: TimerScreenProps) {
   const { t, i18n } = useTranslation()
+  const { preference, setPreference } = useTheme()
   const { timer, remainingMs, todayTotals, start, abandon, acknowledge } = useTimer(store)
 
   useCycleEndAlerts(store, alerts)
@@ -136,9 +148,27 @@ export function TimerScreen({ store = timerStore, alerts = browserAlerts }: Time
             type="button"
             aria-pressed={i18n.resolvedLanguage === language}
             onClick={() => void i18n.changeLanguage(language)}
-            className="rounded-full px-3 py-1 transition hover:bg-slate-200 aria-pressed:font-semibold aria-pressed:text-slate-900 dark:hover:bg-slate-800 dark:aria-pressed:text-slate-50"
+            className={TOGGLE_CLASS}
           >
             {t(LANGUAGE_KEY[language])}
+          </button>
+        ))}
+      </div>
+
+      <div
+        role="group"
+        aria-label={t('theme.group')}
+        className="flex gap-1 text-xs text-slate-500 dark:text-slate-400"
+      >
+        {THEME_PREFERENCES.map((option) => (
+          <button
+            key={option}
+            type="button"
+            aria-pressed={preference === option}
+            onClick={() => setPreference(option)}
+            className={TOGGLE_CLASS}
+          >
+            {t(THEME_KEY[option])}
           </button>
         ))}
       </div>
