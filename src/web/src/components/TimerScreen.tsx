@@ -4,6 +4,7 @@ import { POMODOROS_PER_LONG_BREAK, nextKind } from '../domain/timer'
 import { useCycleEndAlerts } from '../hooks/useCycleEndAlerts'
 import { useTheme } from '../hooks/useTheme'
 import { timerStore, useTimer } from '../hooks/useTimer'
+import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import type { TimerStore } from '../hooks/useTimerStore'
 import { SUPPORTED_LANGUAGES } from '../i18n'
 import { THEME_PREFERENCES } from '../lib/theme'
@@ -44,6 +45,7 @@ export interface TimerScreenProps {
 export function TimerScreen({ store = timerStore, alerts = browserAlerts }: TimerScreenProps) {
   const { t, i18n } = useTranslation()
   const { preference, setPreference } = useTheme()
+  const online = useOnlineStatus()
   const { timer, remainingMs, todayTotals, start, abandon, acknowledge } = useTimer(store)
 
   useCycleEndAlerts(store, alerts)
@@ -69,6 +71,18 @@ export function TimerScreen({ store = timerStore, alerts = browserAlerts }: Time
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-8 px-6 py-12 text-center">
+      {!online && (
+        // `role="alert"` e não `status`: a região de status já é do ciclo, e
+        // dois elementos com o mesmo papel confundem leitor de tela e teste.
+        <p
+          role="alert"
+          data-testid="offline-banner"
+          className="rounded-lg bg-amber-100 px-4 py-2 text-sm text-amber-900 dark:bg-amber-900/40 dark:text-amber-100"
+        >
+          {t('offline.banner')}
+        </p>
+      )}
+
       <h1 className="text-xl font-semibold tracking-tight text-slate-500 dark:text-slate-400">
         {t('app.name')}
       </h1>

@@ -49,6 +49,9 @@ export const resources = {
         ptBR: 'Português',
         en: 'English',
       },
+      offline: {
+        banner: 'Você está offline. O timer continua contando e o dia é creditado; minutos de ranking exigem conexão.',
+      },
       theme: {
         group: 'Tema',
         system: 'Sistema',
@@ -91,6 +94,9 @@ export const resources = {
         group: 'Language',
         ptBR: 'Português',
         en: 'English',
+      },
+      offline: {
+        banner: 'You are offline. The timer keeps running and your day is credited; ranking minutes require a connection.',
       },
       theme: {
         group: 'Theme',
