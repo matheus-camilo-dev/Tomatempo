@@ -198,6 +198,33 @@ describe('alertas', () => {
   })
 })
 
+describe('idioma', () => {
+  it('deve oferecer a troca de idioma', () => {
+    setup()
+
+    expect(screen.getByRole('button', { name: /english/i })).toBeInTheDocument()
+  })
+
+  it('deve traduzir a tela ao escolher inglês', async () => {
+    setup()
+
+    fireEvent.click(screen.getByRole('button', { name: /english/i }))
+
+    expect(await screen.findByRole('button', { name: /start focus/i })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(/focus/i)
+    expect(screen.getByTestId('today-summary')).toHaveTextContent(/focused today/i)
+  })
+
+  it('deve marcar o idioma corrente para leitores de tela', () => {
+    setup()
+
+    expect(screen.getByRole('button', { name: /português/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+})
+
 describe('acessibilidade', () => {
   it('deve anunciar a mudança de ciclo em região viva', () => {
     setup()

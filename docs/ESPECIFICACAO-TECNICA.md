@@ -348,6 +348,10 @@ pela mensagem. Rate limit: 5/min em login e recuperação de senha, 60/min em he
 Escopo: timer 25/5/15 com a regra dos 4 ciclos, sem emenda automática, alarme, notificação do navegador,
 claro/escuro, i18n pt-BR/en, PWA instalável e offline-first, histórico local do dia, CTA de cadastro.
 
+O idioma é detectado do navegador e trocável na própria tela, por um seletor compacto — a tela de preferências
+só existe a partir da fase 2, e sem alternância não há como o usuário corrigir uma detecção errada. A escolha
+fica no `localStorage`; na fase 2 ela passa a acompanhar a conta.
+
 **Pronto quando:**
 
 - [ ] Aba em segundo plano por 25min conclui no instante certo (erro < 1s) e notifica.
@@ -355,7 +359,9 @@ claro/escuro, i18n pt-BR/en, PWA instalável e offline-first, histórico local d
 - [ ] Fim de ciclo nunca inicia o próximo sozinho.
 - [ ] App instala como PWA e abre 100% offline.
 - [ ] Lighthouse PWA e Acessibilidade ≥ 90.
-- [ ] Zero strings hardcoded na UI (tudo em `pt-BR.json` / `en.json`).
+- [ ] Zero strings hardcoded na UI, incluindo as mensagens de notificação.
+- [ ] Os dois catálogos têm exatamente as mesmas chaves, sem valor vazio — verificado por teste.
+- [ ] Trocar o idioma muda a tela inteira e sobrevive ao recarregamento.
 
 ### Fase 2 — Conta, meta e streak
 
