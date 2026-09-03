@@ -33,6 +33,8 @@ Site web de Pomodoro utilizável **anonimamente**, com **login opcional** que de
 - **Confirmação de e-mail**: o link vale **24 horas** e serve **uma vez só**. O cadastro já entra logado —
   meta e streak funcionam antes de confirmar; o **ranking não**.
 - **Recuperação de senha**: o link vale **1 hora** e serve **uma vez só**.
+- **Senha**: mínimo de 8 caracteres, e senha muito comum (as que aparecem em toda lista de vazamento) é
+  recusada — no cadastro e na troca.
 - **O site nunca revela se um e-mail tem conta**: cadastro, login e recuperação dizem a mesma coisa para
   e-mail conhecido e desconhecido.
 - **Conta começa do zero** — o histórico anônimo do navegador não migra (proteção do ranking contra dados forjados).

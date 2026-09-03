@@ -317,8 +317,16 @@ criar a conta, para não parecer bug.
 - **Onboarding**: enquanto `onboarding_completed_at` for `null`, `/me` responde `onboardingRequired: true` e os
   endpoints de sessão respondem `409` com `code = onboarding_required`. `POST /auth/onboarding` é a única saída
   desse estado e só aceita ser chamado uma vez.
-- **Apelido**: whitelist `[a-z0-9_]`, 3–20 caracteres, único sem distinguir maiúsculas (`citext`). Nova troca só
-  depois de `NicknameChangeLockDays = 30` dias da anterior (§11.8).
+- **Apelido**: 3–20 caracteres de `[A-Za-z0-9_]` na entrada, **normalizado para minúsculas** antes de gravar —
+  o valor guardado e a URL pública obedecem sempre a whitelist `[a-z0-9_]`. Unicidade não distingue maiúsculas
+  (`citext`): com `ana_1` cadastrado, `ANA_1` é apelido repetido, não apelido inválido. Nova troca só depois de
+  `NicknameChangeLockDays = 30` dias da anterior (§11.8).
+- **Senha**: mínimo de 8 caracteres e recusa de senha que esteja na lista de senhas comuns embutida na
+  aplicação, tanto no cadastro quanto no reset (§7.2/A07). A lista é um arquivo versionado, carregado uma vez em
+  memória; ampliá-la não muda código.
+- **Rate limit do login particionado por e-mail** (5/min, §4), não por IP: o alvo do ataque é uma conta
+  específica, e a partição por e-mail não revela nada — a resposta continua idêntica para conta existente e
+  inexistente.
 - **Sessão**: cookie do Identity `HttpOnly` + `Secure` + `SameSite=Lax`, regenerado no login e invalidado no
   logout. O `userId` sai sempre da sessão, nunca de payload, rota ou query (§7.2/A01).
 - Constantes em `Tomatempo.Domain` (§8.4): `SignupFreezeGrant = 2`, `DefaultDailyGoal = 4`,
@@ -431,6 +439,7 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [ ] Login e recuperação respondem igual para e-mail existente e inexistente; senha errada e e-mail
       inexistente devolvem o mesmo `code`.
 - [ ] Sexta tentativa de login no mesmo minuto responde 429.
+- [ ] Senha com menos de 8 caracteres ou presente na lista de senhas comuns é recusada no cadastro e no reset.
 - [ ] Token de confirmação serve uma vez; reusado ou passadas 24h, responde erro estável sem confirmar nada.
 - [ ] Token de reset serve uma vez, expira em 1h, e trocar a senha derruba as sessões anteriores.
 - [ ] O cookie de sessão sai `HttpOnly`, `Secure` e `SameSite=Lax`; o logout o invalida.
