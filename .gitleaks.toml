@@ -17,7 +17,9 @@ tags = ["database", "credential"]
 [[rules]]
 id = "dotnet-connection-string"
 description = "Connection string .NET com Password/Pwd preenchido"
-regex = '''(?i)(password|pwd)\s*=\s*(?!changeme|your[-_]?|<)[^\s;"']{6,}'''
+# RE2 (engine do gitleaks) não suporta lookahead: os valores falsos são
+# excluídos pelo [allowlist] abaixo, não por (?!...).
+regex = '''(?i)(password|pwd)\s*=\s*[^\s;"']{6,}'''
 tags = ["database", "credential"]
 
 [allowlist]

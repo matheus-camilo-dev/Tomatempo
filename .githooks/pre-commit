@@ -25,9 +25,19 @@ fi
 # 2. gitleaks, quando disponível (caminho preferencial)
 # ---------------------------------------------------------------------------
 if command -v gitleaks >/dev/null 2>&1; then
-  gitleaks protect --staged --redact --config .gitleaks.toml \
-    || fail "gitleaks encontrou um segredo. Rotacione a credencial ANTES de qualquer coisa."
-  exit 0
+  set +e
+  gitleaks git --staged --redact --config .gitleaks.toml
+  code=$?
+  set -e
+
+  case "$code" in
+    0) exit 0 ;;
+    1) fail "gitleaks encontrou um segredo. Rotacione a credencial ANTES de qualquer coisa." ;;
+    # Qualquer outro código é falha da ferramenta (config inválida, pânico do
+    # RE2, binário corrompido) — nunca deve ser lido como "segredo encontrado",
+    # sob pena de barrar todo commit com o diagnóstico errado.
+    *) fail "gitleaks falhou com código $code — provável erro de configuração, não segredo. Rode 'gitleaks git --staged --config .gitleaks.toml' para ver o motivo." ;;
+  esac
 fi
 
 # ---------------------------------------------------------------------------
