@@ -41,7 +41,8 @@ git restore --staged leak-probe.txt && rm leak-probe.txt
 npm run dev            # servidor de desenvolvimento
 npm test               # suíte completa
 npm run test:watch     # modo observador
-npm run test:coverage   # com cobertura (gate de 90% no domínio)
+npm run test:coverage  # com cobertura (gate de 90% no domínio)
+npm run test:e2e       # E2E em Chromium, contra o build de produção
 npm run typecheck      # TypeScript strict
 npm run lint           # oxlint
 npm run build          # build de produção
@@ -60,8 +61,17 @@ Três regras não negociáveis, detalhadas na especificação técnica:
 
 ## Estado atual
 
-Fase 1 em andamento (timer anônimo + PWA). Fases 2 e 3 — conta, meta, streak, ranking — descritas na
+**Fase 1 completa**: timer 25/5/15 sem emenda automática, histórico local do dia, alarme e notificação,
+tema claro/escuro, português e inglês, e PWA instalável que abre offline.
+
+Fases 2 e 3 — conta, meta diária, sequência de dias, ranking semanal e perfil público — descritas na
 especificação técnica, §5.
+
+Antes do primeiro `npm run test:e2e`, instale o navegador uma vez:
+
+```bash
+npx playwright install chromium
+```
 
 ## Licença
 

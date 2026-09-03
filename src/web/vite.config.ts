@@ -28,6 +28,8 @@ export default defineConfig({
   ],
   test: {
     environment: 'jsdom',
+    // e2e é do Playwright, que tem runner próprio.
+    exclude: ['node_modules/**', 'e2e/**', 'dist/**'],
     setupFiles: ['./src/test/setup.ts'],
     css: false,
     coverage: {

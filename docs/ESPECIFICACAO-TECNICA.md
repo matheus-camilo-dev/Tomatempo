@@ -354,21 +354,34 @@ fica no `localStorage`; na fase 2 ela passa a acompanhar a conta.
 
 **Pronto quando:**
 
-- [ ] Aba em segundo plano por 25min conclui no instante certo (erro < 1s) e notifica.
-- [ ] Recarregar a página no meio do ciclo restaura o tempo restante correto.
-- [ ] Fim de ciclo nunca inicia o próximo sozinho.
-- [ ] App instala como PWA e abre 100% offline.
-- [ ] Lighthouse PWA e Acessibilidade ≥ 90.
-- [ ] O manifesto declara nome, ícones de 192 e 512, cor de tema e `display: standalone`.
-- [ ] Perder a conexão mostra aviso visível; reconectar faz o aviso sumir.
-- [ ] O timer continua contando e creditando o dia enquanto offline.
-- [ ] Zero strings hardcoded na UI, incluindo as mensagens de notificação.
-- [ ] Os dois catálogos têm exatamente as mesmas chaves, sem valor vazio — verificado por teste.
-- [ ] Trocar o idioma muda a tela inteira e sobrevive ao recarregamento.
-- [ ] Sem escolha do usuário, o tema segue o sistema — e acompanha a mudança dele sem recarregar.
-- [ ] Escolher claro ou escuro sobrepõe o sistema e sobrevive ao recarregamento.
-- [ ] Voltar para "sistema" descarta a escolha e volta a seguir o sistema.
-- [ ] O seletor de tema indica a opção corrente para leitores de tela.
+- [x] Aba em segundo plano por 25min conclui no instante certo (erro < 1s) e notifica.
+- [x] Recarregar a página no meio do ciclo restaura o tempo restante correto.
+- [x] Fim de ciclo nunca inicia o próximo sozinho.
+- [x] App instala como PWA e abre 100% offline.
+- [x] Lighthouse PWA e Acessibilidade ≥ 90.
+- [x] O manifesto declara nome, ícones de 192 e 512, cor de tema e `display: standalone`.
+- [x] Perder a conexão mostra aviso visível; reconectar faz o aviso sumir.
+- [x] O timer continua contando e creditando o dia enquanto offline.
+- [x] Zero strings hardcoded na UI, incluindo as mensagens de notificação.
+- [x] Os dois catálogos têm exatamente as mesmas chaves, sem valor vazio — verificado por teste.
+- [x] Trocar o idioma muda a tela inteira e sobrevive ao recarregamento.
+- [x] Sem escolha do usuário, o tema segue o sistema — e acompanha a mudança dele sem recarregar.
+- [x] Escolher claro ou escuro sobrepõe o sistema e sobrevive ao recarregamento.
+- [x] Voltar para "sistema" descarta a escolha e volta a seguir o sistema.
+- [x] O seletor de tema indica a opção corrente para leitores de tela.
+
+**Como cada um foi verificado** (02/09/2026): 168 testes unitários e 7 E2E em Chromium real, contra o build de
+produção. O E2E cobre service worker ativo, manifesto servido, app abrindo com a rede cortada e o aviso de
+offline aparecendo e sumindo. Acessibilidade auditada com axe-core nas regras WCAG 2.1 A e AA: **zero violações
+nos dois temas**, 17 regras passando.
+
+Três pontos continuam dependendo de verificação manual, e não são cobertos por automação:
+
+1. **Alarme audível e notificação do sistema** — exigem permissão concedida e alto-falante; os testes provam que
+   as chamadas acontecem no momento certo, não que o som sai.
+2. **Instalação real** ("adicionar à tela de início") em Android e iOS.
+3. **Aba estrangulada por 25 minutos de verdade** — a lógica de timestamp absoluto e de ressincronização está
+   testada, mas nenhum teste espera 25 minutos reais.
 
 ### Fase 2 — Conta, meta e streak
 
