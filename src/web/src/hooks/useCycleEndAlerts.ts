@@ -1,12 +1,13 @@
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { CycleKind } from '../domain/timer'
-import type { AlertMessage, AlertPorts } from '../lib/alerts'
+import type { AlertPorts } from '../lib/alerts'
 import type { TimerStore } from './useTimerStore'
 
-const END_MESSAGE: Record<CycleKind, AlertMessage> = {
-  focus: { title: 'Pomodoro concluído', body: 'Hora da pausa.' },
-  shortBreak: { title: 'Pausa concluída', body: 'Hora de voltar ao foco.' },
-  longBreak: { title: 'Pausa concluída', body: 'Hora de voltar ao foco.' },
+const MESSAGE_KEYS: Record<CycleKind, { title: string; body: string }> = {
+  focus: { title: 'notification.focusEndedTitle', body: 'notification.focusEndedBody' },
+  shortBreak: { title: 'notification.breakEndedTitle', body: 'notification.breakEndedBody' },
+  longBreak: { title: 'notification.breakEndedTitle', body: 'notification.breakEndedBody' },
 }
 
 /**
@@ -20,6 +21,8 @@ const END_MESSAGE: Record<CycleKind, AlertMessage> = {
  * ouviu o alarme e vê o contador zerado, e notificar por cima disso é ruído.
  */
 export function useCycleEndAlerts(store: TimerStore, alerts: AlertPorts): void {
+  const { t } = useTranslation()
+
   useEffect(
     () =>
       store.subscribe((state, previous) => {
@@ -27,8 +30,12 @@ export function useCycleEndAlerts(store: TimerStore, alerts: AlertPorts): void {
         if (!justEnded) return
 
         alerts.playAlarm()
-        if (alerts.isHidden()) alerts.notify(END_MESSAGE[state.timer.kind])
+
+        if (alerts.isHidden()) {
+          const keys = MESSAGE_KEYS[state.timer.kind]
+          alerts.notify({ title: t(keys.title), body: t(keys.body) })
+        }
       }),
-    [store, alerts],
+    [store, alerts, t],
   )
 }

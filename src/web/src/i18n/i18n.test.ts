@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, createI18n, resources } from './index'
+import {
+  DEFAULT_LANGUAGE,
+  LANGUAGE_STORAGE_KEY,
+  SUPPORTED_LANGUAGES,
+  createI18n,
+  resources,
+} from './index'
 
 /** Achata `{a:{b:'x'}}` em `['a.b']` para comparar catálogos chave a chave. */
 function flatKeys(value: object, prefix = ''): string[] {
@@ -58,6 +64,30 @@ describe('createI18n', () => {
     const i18n = await createI18n({ language: 'pt' })
 
     expect(i18n.t('action.abandon')).toBe('Abandonar')
+  })
+
+  it('deve detectar o idioma do navegador quando nenhum é pedido', async () => {
+    const original = Object.getOwnPropertyDescriptor(globalThis.navigator, 'language')
+    Object.defineProperty(globalThis.navigator, 'language', {
+      configurable: true,
+      get: () => 'en-US',
+    })
+
+    try {
+      const i18n = await createI18n()
+
+      expect(i18n.resolvedLanguage).toBe('en')
+    } finally {
+      if (original) Object.defineProperty(globalThis.navigator, 'language', original)
+    }
+  })
+
+  it('deve guardar a escolha do usuário para o próximo acesso', async () => {
+    const i18n = await createI18n({ language: 'pt-BR' })
+
+    await i18n.changeLanguage('en')
+
+    expect(localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('en')
   })
 
   it('deve pluralizar o resumo do dia em português', async () => {

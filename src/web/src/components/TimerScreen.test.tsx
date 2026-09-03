@@ -209,8 +209,11 @@ describe('idioma', () => {
     setup()
 
     fireEvent.click(screen.getByRole('button', { name: /english/i }))
+    // `findBy*` usa waitFor, que não avança sob fake timers; um act assíncrono
+    // deixa a troca de idioma assentar sem depender do relógio.
+    await act(async () => {})
 
-    expect(await screen.findByRole('button', { name: /start focus/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /start focus/i })).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent(/focus/i)
     expect(screen.getByTestId('today-summary')).toHaveTextContent(/focused today/i)
   })
