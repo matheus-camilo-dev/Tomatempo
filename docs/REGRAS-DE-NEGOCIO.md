@@ -26,6 +26,15 @@ Site web de Pomodoro utilizável **anonimamente**, com **login opcional** que de
 | Estatísticas pessoais | — | ✔ |
 
 - **Login**: e-mail/senha e social (Google).
+- **Entrar com Google em um e-mail que já tem conta de senha** leva para a conta existente, sem criar uma
+  segunda. Exige que o próprio Google afirme que o e-mail é confirmado; se não afirmar, o acesso é recusado.
+- **Quem se cadastra pelo Google passa por uma tela de boas-vindas** para escolher apelido, meta e fuso.
+  Enquanto não escolher, a conta existe mas não pontua.
+- **Confirmação de e-mail**: o link vale **24 horas** e serve **uma vez só**. O cadastro já entra logado —
+  meta e streak funcionam antes de confirmar; o **ranking não**.
+- **Recuperação de senha**: o link vale **1 hora** e serve **uma vez só**.
+- **O site nunca revela se um e-mail tem conta**: cadastro, login e recuperação dizem a mesma coisa para
+  e-mail conhecido e desconhecido.
 - **Conta começa do zero** — o histórico anônimo do navegador não migra (proteção do ranking contra dados forjados).
 - **CTA para deslogados**: área na tela convidando a criar conta para participar do ranking.
 
@@ -102,6 +111,27 @@ Site web de Pomodoro utilizável **anonimamente**, com **login opcional** que de
 - **Offline**: sincroniza ao reconectar, aceito apenas dentro de 48h, sem sobreposição e com teto diário.
 - **Stack e hospedagem**: React + API .NET, PostgreSQL, Docker; nuvem definida depois (ver
   `docs/ESPECIFICACAO-TECNICA.md`).
+
+### 03/09/2026 — conta e acesso (abertura da fase 2)
+
+- **Google vincula à conta que já existe** quando o e-mail já tem cadastro de senha e o próprio Google o dá
+  como confirmado. *Por quê*: duas contas para a mesma pessoa duplicariam streak e minutos de ranking — o
+  mesmo dano que a regra "conta nova começa zerada" existe para evitar. Exigir o e-mail confirmado pelo Google
+  é o que impede alguém de tomar conta alheia apenas alegando ser dono daquele endereço.
+- **Cadastro por Google exige a tela de boas-vindas** (apelido, meta e fuso) antes de a conta pontuar.
+  *Por quê*: o apelido vira a URL pública do perfil e fica travado por 30 dias; um apelido gerado pelo servidor
+  a partir do e-mail seria uma identidade pública que o usuário não escolheu e não poderia trocar em seguida.
+- **O cadastro já entra logado, com o e-mail ainda não confirmado.** *Por quê*: meta e streak nunca dependeram
+  da confirmação (só o ranking depende), e mandar o usuário para a caixa de entrada antes do primeiro pomodoro
+  o perde justamente no minuto em que ele está mais disposto a começar.
+- **Link de confirmação vale 24h; link de reset de senha vale 1h**, ambos de uso único. *Por quê*: a
+  confirmação disputa espaço com uma caixa de entrada que pode levar horas para ser lida; o reset é a chave da
+  conta, e cada minuto de validade é tempo em que um e-mail vazado dá acesso.
+- **Nenhuma resposta revela se um e-mail tem conta.** *Por quê*: saber quem usa o site é dado pessoal, e
+  enumerar contas é o primeiro passo de qualquer ataque de senha. Resíduo assumido: como o cadastro
+  bem-sucedido já devolve a sessão, quem observa a resposta crua ainda distingue e-mail novo de e-mail
+  existente pela presença do cookie. Contido pelo limite de 5 tentativas por minuto, o mesmo do login;
+  eliminá-lo exigiria abrir mão do login automático no cadastro.
 
 ## Pendências
 

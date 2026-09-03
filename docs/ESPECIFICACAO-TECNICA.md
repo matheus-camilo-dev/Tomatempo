@@ -108,14 +108,18 @@ momento do registro — nunca recalculado a partir de UTC depois.
 | `id` | uuid | PK |
 | `email`, `password_hash`, ... | | Identity |
 | `email_confirmed` | bool | **pré-requisito para pontuar no ranking** |
-| `nickname` | citext unique | 3–20 chars, `[a-z0-9_]`, define a URL `/u/{nickname}` |
+| `nickname` | citext unique | 3–20 chars, `[a-z0-9_]`, define a URL `/u/{nickname}`; `null` até o onboarding |
 | `avatar_id` | text | id do catálogo estático |
 | `time_zone` | text | IANA (ex.: `America/Sao_Paulo`) |
 | `locale` | text | `pt-BR` \| `en` |
 | `color_mode` | text | `light` \| `dark` \| `system` |
 | `theme_preset_id` | text | catálogo estático; `null` = padrão |
 | `ranking_opt_out` | bool | default `false` |
+| `nickname_changed_at` | timestamptz? | trava de 30 dias para a próxima troca (§11.8) |
+| `onboarding_completed_at` | timestamptz? | `null` = apelido/meta/fuso ainda não escolhidos; conta não pontua |
 | `created_at` | timestamptz | |
+
+Logins externos (Google) ficam em `AspNetUserLogins`, do próprio Identity — sem tabela própria.
 
 ### `user_goals` (histórico — meta só vale no dia seguinte)
 
@@ -292,6 +296,35 @@ Zero chamadas ao servidor. Timer, tema claro/escuro e histórico do dia ficam em
 de cadastro. **Nada é migrado no cadastro** — a conta nasce zerada, e a UI avisa isso explicitamente antes de
 criar a conta, para não parecer bug.
 
+### 3.10 Conta, autenticação e onboarding
+
+- **Cadastro por e-mail/senha** grava o usuário, a primeira linha de `user_goals` com `effective_from` = dia
+  local de hoje (é a meta inicial, não uma edição — a regra do dia seguinte vale para *alterações*), 2 créditos
+  `Signup` no `freeze_ledger` e `user_streaks` zerado. A sessão sai na resposta: o usuário entra logado com
+  `email_confirmed = false`.
+- **Confirmação de e-mail**: token aleatório guardado como hash, uso único, validade
+  `EmailConfirmationTokenLifetime = 24h`. Reenvio permitido dentro do rate limit.
+- **Reset de senha**: mesmo desenho, validade `PasswordResetTokenLifetime = 1h`; ao trocar a senha, todas as
+  sessões anteriores do usuário são invalidadas.
+- **Sem enumeração de conta**: `/auth/login` e `/auth/forgot-password` respondem exatamente igual para e-mail
+  conhecido e desconhecido, e a resposta de credencial inválida é a mesma para "e-mail não existe" e "senha
+  errada". `/auth/register` devolve o mesmo corpo nos dois casos e, quando o e-mail já tem conta, envia um
+  aviso ao dono em vez de criar a segunda. **Resíduo aceito** (log de 03/09/2026): o cookie de sessão só
+  acompanha o caso de conta nova, e isso é observável; a contenção é o rate limit de 5/min.
+- **Google (authorization code)**: o callback exige `email_verified = true` do provedor. E-mail já cadastrado →
+  vincula o login externo à conta existente e entra nela. E-mail novo → cria a conta com
+  `email_confirmed = true` e `onboarding_completed_at = null`.
+- **Onboarding**: enquanto `onboarding_completed_at` for `null`, `/me` responde `onboardingRequired: true` e os
+  endpoints de sessão respondem `409` com `code = onboarding_required`. `POST /auth/onboarding` é a única saída
+  desse estado e só aceita ser chamado uma vez.
+- **Apelido**: whitelist `[a-z0-9_]`, 3–20 caracteres, único sem distinguir maiúsculas (`citext`). Nova troca só
+  depois de `NicknameChangeLockDays = 30` dias da anterior (§11.8).
+- **Sessão**: cookie do Identity `HttpOnly` + `Secure` + `SameSite=Lax`, regenerado no login e invalidado no
+  logout. O `userId` sai sempre da sessão, nunca de payload, rota ou query (§7.2/A01).
+- Constantes em `Tomatempo.Domain` (§8.4): `SignupFreezeGrant = 2`, `DefaultDailyGoal = 4`,
+  `AllowedDailyGoals = {2,4,6,8}`, `NicknameMinLength = 3`, `NicknameMaxLength = 20`,
+  `NicknameChangeLockDays = 30`, `EmailConfirmationTokenLifetime = 24h`, `PasswordResetTokenLifetime = 1h`.
+
 ---
 
 ## 4. API (v1, prefixo `/api`)
@@ -299,15 +332,17 @@ criar a conta, para não parecer bug.
 **Auth**
 
 ```
-POST   /auth/register            {email, password, goal, timeZone, locale, nickname}
+POST   /auth/register            {email, password, nickname, goal, timeZone, locale} → sessão (conta nova)
 POST   /auth/login               {email, password}
 POST   /auth/logout
 GET    /auth/google              → redirect
-GET    /auth/google/callback
+GET    /auth/google/callback     → vincula ou cria; leva ao onboarding se a conta estiver incompleta
+POST   /auth/onboarding          {nickname, goal, timeZone, locale} → só enquanto onboardingRequired
 POST   /auth/confirm-email       {token}
+POST   /auth/resend-confirmation → 202 sempre, com ou sem conta naquele e-mail
 POST   /auth/forgot-password     {email}
 POST   /auth/reset-password      {token, password}
-GET    /me                       → perfil, meta vigente e futura, streak, freezes, preferências
+GET    /me                       → perfil, onboardingRequired, meta vigente e futura, streak, freezes, preferências
 PATCH  /me                       {nickname?, avatarId?, timeZone?, locale?, colorMode?, themePresetId?, rankingOptOut?}
 PUT    /me/goal                  {pomodoros} → responde effectiveFrom (sempre amanhã)
 GET    /me/freezes               → saldo + ledger explicado (a origem de cada crédito)
@@ -391,6 +426,22 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 
 **Pronto quando:**
 
+- [ ] O cadastro credita 2 freezes com linha `Signup` no ledger, streak 0 e nenhum minuto.
+- [ ] Cadastro com e-mail já usado responde igual ao de e-mail novo e não cria a segunda conta.
+- [ ] Login e recuperação respondem igual para e-mail existente e inexistente; senha errada e e-mail
+      inexistente devolvem o mesmo `code`.
+- [ ] Sexta tentativa de login no mesmo minuto responde 429.
+- [ ] Token de confirmação serve uma vez; reusado ou passadas 24h, responde erro estável sem confirmar nada.
+- [ ] Token de reset serve uma vez, expira em 1h, e trocar a senha derruba as sessões anteriores.
+- [ ] O cookie de sessão sai `HttpOnly`, `Secure` e `SameSite=Lax`; o logout o invalida.
+- [ ] Endpoint autenticado sem cookie responde 401, e identificador de usuário vindo do cliente é ignorado.
+- [ ] Google com e-mail já cadastrado entra na conta existente; sem `email_verified` do provedor, é recusado.
+- [ ] Conta criada pelo Google responde `onboardingRequired` até escolher apelido, meta e fuso, e nesse estado
+      os endpoints de sessão respondem 409.
+- [ ] Apelido fora da whitelist, curto demais, longo demais ou repetido em outra caixa é recusado.
+- [ ] `PUT /me/goal` responde `effectiveFrom` = amanhã local; segunda edição no mesmo dia substitui a linha
+      futura em vez de empilhar.
+- [ ] Todo erro sai em `application/problem+json`, com `code` estável e sem stack trace.
 - [ ] Fechar a aba no minuto 20 credita exatamente 20 minutos; fechar no minuto 3 credita 0.
 - [ ] Abrir o timer em duas abas: a segunda assume, a primeira avisa e para de pontuar.
 - [ ] Manipular o relógio do sistema não altera minuto algum.

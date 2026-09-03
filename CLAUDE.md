@@ -1,6 +1,6 @@
 # Tomatempo — Product Spec (AI context)
 
-Web pomodoro timer. Anonymous use OK; login unlocks: theme presets, daily goal, streak+freezes, weekly global ranking, personal stats. No code exists yet; this file is the product source of truth (business rules mirror docs/REGRAS-DE-NEGOCIO.md, PO-facing, pt-BR). Engineering spec — stack, data model, API, delivery phases: docs/ESPECIFICACAO-TECNICA.md.
+Web pomodoro timer. Anonymous use OK; login unlocks: theme presets, daily goal, streak+freezes, weekly global ranking, personal stats. Phase 1 (anonymous timer, PWA, i18n, themes) is delivered; this file is the product source of truth (business rules mirror docs/REGRAS-DE-NEGOCIO.md, PO-facing, pt-BR). Engineering spec — stack, data model, API, delivery phases: docs/ESPECIFICACAO-TECNICA.md.
 
 ## Core rules (invariants)
 
@@ -8,6 +8,8 @@ Web pomodoro timer. Anonymous use OK; login unlocks: theme presets, daily goal, 
 - No auto-chaining: each cycle ends → requires user interaction to start next (anti-idle-farm).
 - Focus minutes: partial time counts (abandon at 20min → 20min scored); partials <5min discarded.
 - Auth: email/password + Google. New account starts at zero — anonymous local history NEVER migrates (anti-forgery).
+- Google signs into an EXISTING email/password account only when the provider reports `email_verified`; never a second account for one email. Google signup lands in mandatory onboarding (nickname+goal+timezone) and scores nothing until it completes.
+- Register signs the user in with email unconfirmed (goal+streak work; ranking needs confirmed). Confirmation token 24h, reset token 1h, both single-use. No response reveals whether an email has an account.
 - Logged-out UI shows CTA: "sign up to join the ranking".
 
 ## Daily goal & streak (logged-in only)
