@@ -74,6 +74,26 @@ public sealed class ConfirmacaoDeEmailTests(PostgresFixture postgres) : ApiFacts
     }
 
     [Fact]
+    public async Task Confirmar_DeveInvalidarOsDemaisTokensPendentes()
+    {
+        // Arrange — dois links válidos ao mesmo tempo; o antigo não pode sobreviver ao uso
+        // do novo, senão quem capturou o primeiro ainda entra depois (§3.10).
+        var conta = await CadastrarAsync();
+        var primeiro = Emails.TokenFor(conta.Email, SentEmailKind.EmailConfirmation);
+        await conta.Client.PostAsync(
+            "/api/auth/resend-confirmation", JsonContent.Create(new { email = conta.Email }));
+        var segundo = Emails.TokenFor(conta.Email, SentEmailKind.EmailConfirmation);
+        await NovoCliente().PostAsync("/api/auth/confirm-email", TokenDe(segundo));
+
+        // Act
+        var comOAntigo = await NovoCliente().PostAsync("/api/auth/confirm-email", TokenDe(primeiro));
+
+        // Assert
+        comOAntigo.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await CodigoDe(comOAntigo)).Should().Be("invalid_token");
+    }
+
+    [Fact]
     public async Task Reenviar_DeveMandarOutroToken_QuandoOEmailTemConta()
     {
         // Arrange

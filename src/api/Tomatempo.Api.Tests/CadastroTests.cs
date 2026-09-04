@@ -246,6 +246,38 @@ public sealed class CadastroTests(PostgresFixture postgres) : ApiFacts(postgres)
     }
 
     [Fact]
+    public async Task Cadastrar_DeveRecusarSenha_QuandoPassaDoTamanhoMaximo()
+    {
+        // Arrange — a senha alimenta um hash caro de propósito; sem teto, o tamanho da
+        // entrada vira alavanca de consumo (§3.10).
+        var senhaEnorme = new string('a', 129);
+
+        // Act
+        var response = await NovoCliente()
+            .PostAsync("/api/auth/register", CadastroDe(NovoEmail(), NovoApelido(), senha: senhaEnorme));
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await CodigoDe(response)).Should().Be("weak_password");
+    }
+
+    [Fact]
+    public async Task Cadastrar_DeveRecusarEmail_QuandoPassaDoTamanhoMaximo()
+    {
+        // Arrange — 254 é o limite da RFC 5321; acima disso o endereço não cabe na coluna e
+        // hoje virava erro interno em vez de recusa explícita.
+        var emailEnorme = new string('a', 243) + "@example.com";
+
+        // Act
+        var response = await NovoCliente()
+            .PostAsync("/api/auth/register", CadastroDe(emailEnorme, NovoApelido()));
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await CodigoDe(response)).Should().Be("invalid_email");
+    }
+
+    [Fact]
     public async Task Cadastrar_DeveGuardarOApelidoEmMinusculas_QuandoVemComMaiusculas()
     {
         // Arrange

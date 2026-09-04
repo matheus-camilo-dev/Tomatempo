@@ -16,6 +16,9 @@ public sealed class LoginThrottle(TimeProvider clock)
 
     private readonly ConcurrentDictionary<string, Contador> _tentativas = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Quantas chaves o contador guarda agora — o que o expurgo mantém sob controle.</summary>
+    public int PartitionCount => _tentativas.Count;
+
     public bool Allow(string? email)
     {
         var chave = email?.Trim() ?? string.Empty;

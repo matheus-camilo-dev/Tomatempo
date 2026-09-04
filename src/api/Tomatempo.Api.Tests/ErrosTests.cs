@@ -55,6 +55,26 @@ public sealed class ErrosTests(PostgresFixture postgres) : ApiFacts(postgres)
     }
 
     [Fact]
+    public async Task Erro_DeveTrazerOsMesmosCabecalhosDeSeguranca_QueARespostaDeSucesso()
+    {
+        // Arrange — o tratador de exceção limpa a resposta antes de escrever, e com ela levava
+        // embora os cabeçalhos de segurança (§7.2/A05).
+        var corpoQuebrado = new StringContent("{isto não é json", Encoding.UTF8, "application/json");
+
+        // Act
+        var erro = await NovoCliente().PostAsync("/api/auth/register", corpoQuebrado);
+        var sucesso = await NovoCliente().GetAsync("/health");
+
+        // Assert
+        foreach (var cabecalho in new[] { "X-Content-Type-Options", "X-Frame-Options", "Content-Security-Policy" })
+        {
+            erro.Headers.GetValues(cabecalho).Should().Equal(
+                sucesso.Headers.GetValues(cabecalho),
+                $"a resposta de erro precisa carregar {cabecalho} igual à de sucesso");
+        }
+    }
+
+    [Fact]
     public async Task Erro_DeveResponder401ComProblemJson_QuandoFaltaSessao()
     {
         // Act

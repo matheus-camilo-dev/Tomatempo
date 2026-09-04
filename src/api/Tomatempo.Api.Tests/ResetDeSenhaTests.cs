@@ -97,6 +97,27 @@ public sealed class ResetDeSenhaTests(PostgresFixture postgres) : ApiFacts(postg
     }
 
     [Fact]
+    public async Task Resetar_DeveInvalidarOsDemaisTokensPendentes()
+    {
+        // Arrange — quem teve acesso à caixa de entrada e guardou um link não pode continuar
+        // com ele válido depois de a senha ser trocada por outro link.
+        var conta = await CadastrarAsync();
+        await conta.Client.PostAsync("/api/auth/forgot-password", EsquecerDe(conta.Email));
+        var primeiro = Emails.TokenFor(conta.Email, SentEmailKind.PasswordReset);
+        await conta.Client.PostAsync("/api/auth/forgot-password", EsquecerDe(conta.Email));
+        var segundo = Emails.TokenFor(conta.Email, SentEmailKind.PasswordReset);
+        await NovoCliente().PostAsync("/api/auth/reset-password", ResetDe(segundo, SenhaNova));
+
+        // Act
+        var comOAntigo = await NovoCliente()
+            .PostAsync("/api/auth/reset-password", ResetDe(primeiro, "mais-um-tomate-7712"));
+
+        // Assert
+        comOAntigo.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await CodigoDe(comOAntigo)).Should().Be("invalid_token");
+    }
+
+    [Fact]
     public async Task Resetar_DeveRecusar_QuandoOTokenJaFoiUsado()
     {
         // Arrange
