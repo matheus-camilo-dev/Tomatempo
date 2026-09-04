@@ -1,0 +1,17 @@
+<Project>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Fuso horário do usuário é regra de negócio (§3.6): sem dados de globalização
+         não há como resolver `America/Sao_Paulo`. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- Lockfile obrigatório: dependência entra por revisão, nunca por resolução
+         silenciosa de versão no build de outra máquina (§7.2/A08). -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Regras puras: entra valor, sai valor. Sem EF, sem HTTP, sem relógio ambiente —
+    o instante sempre chega por parâmetro (§1, §6.4). Nenhuma dependência aqui é
+    proposital: é o que mantém a suíte de domínio rodando em milissegundos.
+  -->
+
+</Project>

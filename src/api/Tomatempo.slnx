@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Tomatempo.Api.Tests/Tomatempo.Api.Tests.csproj" />
+  <Project Path="Tomatempo.Api/Tomatempo.Api.csproj" />
+  <Project Path="Tomatempo.Domain.Tests/Tomatempo.Domain.Tests.csproj" />
+  <Project Path="Tomatempo.Domain/Tomatempo.Domain.csproj" />
+  <Project Path="Tomatempo.Infrastructure/Tomatempo.Infrastructure.csproj" />
+</Solution>
