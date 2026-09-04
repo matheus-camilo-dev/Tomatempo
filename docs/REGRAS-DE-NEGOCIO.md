@@ -37,6 +37,8 @@ Site web de Pomodoro utilizável **anonimamente**, com **login opcional** que de
   recusada — no cadastro e na troca.
 - **O site nunca revela se um e-mail tem conta**: cadastro, login e recuperação dizem a mesma coisa para
   e-mail conhecido e desconhecido.
+- **Excluir a conta** apaga os dados pessoais e libera o e-mail e o apelido para um cadastro novo. Quem tem
+  senha precisa digitá-la para confirmar — sessão esquecida aberta não apaga conta de ninguém.
 - **Conta começa do zero** — o histórico anônimo do navegador não migra (proteção do ranking contra dados forjados).
 - **CTA para deslogados**: área na tela convidando a criar conta para participar do ranking.
 

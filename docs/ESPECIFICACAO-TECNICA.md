@@ -334,6 +334,14 @@ criar a conta, para não parecer bug.
   inexistente.
 - **Sessão**: cookie do Identity `HttpOnly` + `Secure` + `SameSite=Lax`, regenerado no login e invalidado no
   logout. O `userId` sai sempre da sessão, nunca de payload, rota ou query (§7.2/A01).
+- **Google**: o fluxo authorization code usa **PKCE**. Se a criação ou o vínculo da conta falhar no meio do
+  caminho, o usuário volta para `/entrar?erro=external_login_failed` — nunca para uma sessão aberta sobre uma
+  conta que não terminou de nascer.
+- **Exclusão de conta** (`DELETE /me`): exige a sessão e, quando a conta tem senha, **a senha atual no corpo** —
+  sessão roubada não apaga conta sozinha. Remove o usuário e tudo que é dele (metas, ledger, streak, tokens e
+  vínculos externos, por cascata no banco); e-mail e apelido voltam a ficar livres. Conta criada pelo Google,
+  que não tem senha, é excluída só com a sessão. A anonimização das linhas de ranking já fechadas (§7.7) entra
+  junto com o ranking, na fase 3.
 - Constantes em `Tomatempo.Domain` (§8.4): `SignupFreezeGrant = 2`, `DefaultDailyGoal = 4`,
   `AllowedDailyGoals = {2,4,6,8}`, `NicknameMinLength = 3`, `NicknameMaxLength = 20`,
   `NicknameChangeLockDays = 30`, `EmailConfirmationTokenLifetime = 24h`, `PasswordResetTokenLifetime = 1h`.
@@ -466,6 +474,12 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [ ] Senha acima de 128 caracteres e e-mail acima de 254 são recusados com `code` estável, não com erro interno.
 - [ ] Consumir um token de confirmação ou de reset invalida os demais pendentes do mesmo tipo.
 - [ ] Endpoint anônimo de autenticação responde 429 ao passar de 60 requisições por minuto vindas do mesmo IP.
+- [ ] Excluir a conta exige a senha atual quando existe uma; a sessão morre, e e-mail e apelido voltam a ficar
+      livres para um cadastro novo.
+- [ ] Conta criada pelo Google, que não tem senha, é excluída só com a sessão.
+- [ ] Endpoint que muda estado recusa requisição com `Content-Type` de formulário.
+- [ ] Nenhuma resposta traz o cabeçalho `Server`.
+- [ ] O fluxo do Google está configurado com PKCE.
 - [ ] Fechar a aba no minuto 20 credita exatamente 20 minutos; fechar no minuto 3 credita 0.
 - [ ] Abrir o timer em duas abas: a segunda assume, a primeira avisa e para de pontuar.
 - [ ] Manipular o relógio do sistema não altera minuto algum.
@@ -646,7 +660,7 @@ Nada aqui é genérico: cada linha diz o que existe no código do Tomatempo.
 | A02 | Cryptographic Failures | HTTPS obrigatório com HSTS; cookie `HttpOnly` + `Secure` + `SameSite=Lax`; senha com **Argon2id** (19 MiB, 2 passagens, paralelismo 1, sal de 16 bytes, saída de 32, gravado no formato PHC), com hash PBKDF2 anterior ainda aceito no login e regravado em Argon2id na hora; tokens de confirmação e reset guardados como hash, de uso único — consumir um invalida os demais pendentes do mesmo tipo —, com expiração; nenhum dado sensível em log. |
 | A03 | Injection | EF Core parametrizado; SQL cru só com parâmetros — interpolação de string em query é proibida e o CI tem regra para isso. React escapa por padrão: `dangerouslySetInnerHTML` é proibido. CSP sem `unsafe-inline`. Apelido validado por whitelist `[a-z0-9_]`. |
 | A04 | Insecure Design | Toda decisão de pontuação acontece no servidor com o relógio dele; tetos e limites explícitos (§3.2, §3.4); sessão única; meta e fuso só valem no dia seguinte. O antifraude é desenho, não filtro. |
-| A05 | Security Misconfiguration | CORS com origem explícita — `AllowAnyOrigin` combinado com credenciais é proibido; `ProblemDetails` sem stack trace em produção; headers de segurança em todas as respostas; OpenAPI exposto só em dev; container roda como usuário não-root; `ASPNETCORE_ENVIRONMENT` nunca `Development` em produção. |
+| A05 | Security Misconfiguration | CORS com origem explícita — `AllowAnyOrigin` combinado com credenciais é proibido; `ProblemDetails` sem stack trace em produção; headers de segurança em **todas** as respostas, inclusive as de erro; a resposta não anuncia o servidor (sem cabeçalho `Server`); endpoint que muda estado recusa `Content-Type` de formulário, que é o único que um formulário de outro site consegue enviar; OpenAPI exposto só em dev; container roda como usuário não-root; `ASPNETCORE_ENVIRONMENT` nunca `Development` em produção. |
 | A06 | Vulnerable Components | Dependabot ligado; `dotnet list package --vulnerable` e `npm audit` no CI barrando alta e crítica; lockfiles versionados; toda dependência nova é conferida quanto a existir mesmo e ser o pacote oficial (ver §7.3.5). |
 | A07 | Identification and Auth Failures | Rate limit de 5/min em login e reset; lockout do Identity após tentativas; senha mínima de 8 caracteres verificada contra lista de senhas vazadas; e-mail confirmado exigido para pontuar; cookie regenerado no login e invalidado no logout; enumeração de conta evitada (resposta idêntica para e-mail existente ou não). |
 | A08 | Software and Data Integrity | Actions do GitHub fixadas por SHA, não por tag móvel; lockfile obrigatório; nada de `curl \| bash` em build; imagens Docker por digest. |
