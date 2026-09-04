@@ -1,3 +1,5 @@
+using Tomatempo.Domain;
+
 namespace Tomatempo.Domain.Accounts;
 
 /// <summary>
@@ -8,9 +10,9 @@ public static class NicknameChangePolicy
 {
     /// <param name="lastChangedAt"><c>null</c> quando o apelido nunca foi trocado desde o cadastro.</param>
     public static bool CanChange(DateTimeOffset? lastChangedAt, DateTimeOffset now) =>
-        throw new NotImplementedException();
+        lastChangedAt is null || now >= NextChangeAllowedAt(lastChangedAt.Value);
 
     /// <summary>Instante em que a próxima troca passa a ser permitida.</summary>
     public static DateTimeOffset NextChangeAllowedAt(DateTimeOffset lastChangedAt) =>
-        throw new NotImplementedException();
+        lastChangedAt.AddDays(RuleConstants.NicknameChangeLockDays);
 }

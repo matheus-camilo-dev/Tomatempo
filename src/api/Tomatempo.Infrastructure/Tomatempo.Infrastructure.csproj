@@ -7,6 +7,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- A lista de senhas comuns viaja dentro do assembly: sem arquivo solto para o deploy
+         esquecer de copiar, e sem caminho de disco para configurar (§3.10). -->
+    <EmbeddedResource Include="Security\senhas-comuns.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Tomatempo.Domain\Tomatempo.Domain.csproj" />
   </ItemGroup>
 

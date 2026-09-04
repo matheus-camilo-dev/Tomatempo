@@ -1,3 +1,5 @@
+using Tomatempo.Domain;
+
 namespace Tomatempo.Domain.Accounts;
 
 /// <summary>Motivo da recusa de um apelido. <see cref="None"/> significa aceito.</summary>
@@ -24,8 +26,37 @@ public sealed record Nickname
     public string Value { get; }
 
     /// <summary>Valida e normaliza. Maiúsculas na entrada viram minúsculas (§3.10).</summary>
-    public static NicknameError TryCreate(string? raw, out Nickname? nickname) =>
-        throw new NotImplementedException();
+    public static NicknameError TryCreate(string? raw, out Nickname? nickname)
+    {
+        nickname = null;
+
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return NicknameError.Missing;
+        }
+
+        if (raw.Length < RuleConstants.NicknameMinLength)
+        {
+            return NicknameError.TooShort;
+        }
+
+        if (raw.Length > RuleConstants.NicknameMaxLength)
+        {
+            return NicknameError.TooLong;
+        }
+
+        foreach (var caractere in raw)
+        {
+            var permitido = caractere is (>= 'a' and <= 'z') or (>= 'A' and <= 'Z') or (>= '0' and <= '9') or '_';
+            if (!permitido)
+            {
+                return NicknameError.InvalidCharacters;
+            }
+        }
+
+        nickname = new Nickname(raw.ToLowerInvariant());
+        return NicknameError.None;
+    }
 
     public override string ToString() => Value;
 }

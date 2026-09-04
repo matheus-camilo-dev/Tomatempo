@@ -1,0 +1,81 @@
+# Ambiente de desenvolvimento (docs/ESPECIFICACAO-TECNICA.md §10).
+#
+#   docker compose up
+#
+# Sobe Postgres, mailpit (captura os e-mails de confirmação e reset, sem SMTP de verdade),
+# a API com hot reload e o Vite. Nenhum segredo mora aqui: as senhas abaixo valem só para o
+# Postgres local, que não é exposto para fora da máquina, e as chaves do Google vêm do
+# `dotnet user-secrets` ou do `.env` — ambos fora do git (§7.5).
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: tomatempo
+      POSTGRES_USER: tomatempo
+      # Banco descartável de máquina local, sem senha: em repositório público, "senha de
+      # desenvolvimento" versionada é só uma senha vazada com desculpa (§7.5). A de produção
+      # vem do ambiente, e a dos testes é gerada pelo Testcontainers.
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tomatempo -d tomatempo"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025"   # SMTP para a API
+      - "8025:8025"   # interface web para ler o que foi enviado
+    environment:
+      MP_MAX_MESSAGES: 500
+
+  api:
+    build:
+      context: ./src/api
+      dockerfile: Dockerfile.dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Db: Host=postgres;Port=5432;Database=tomatempo;Username=tomatempo
+      Smtp__Host: mailpit
+      Smtp__Port: "1025"
+      App__PublicUrl: http://localhost:5173
+      App__WebOrigin: http://localhost:5173
+      # Auth__Google__ClientId e ClientSecret entram pelo .env, nunca por este arquivo.
+      Auth__Google__ClientId: ${Auth__Google__ClientId:-}
+      Auth__Google__ClientSecret: ${Auth__Google__ClientSecret:-}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./src/api:/src
+      - dotnet-nuget:/root/.nuget/packages
+
+  web:
+    image: node:24-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      - api
+    environment:
+      VITE_API_URL: http://localhost:8080
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./src/web:/app
+      - web-node-modules:/app/node_modules
+
+volumes:
+  postgres-data:
+  dotnet-nuget:
+  web-node-modules:

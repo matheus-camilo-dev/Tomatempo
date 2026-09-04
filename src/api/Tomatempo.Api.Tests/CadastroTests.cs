@@ -128,6 +128,24 @@ public sealed class CadastroTests(PostgresFixture postgres) : ApiFacts(postgres)
         me.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    [Fact]
+    public async Task Cadastrar_DeveResponder429_NaSextaTentativaComOMesmoEmail()
+    {
+        // Arrange
+        var email = NovoEmail();
+        var respostas = new List<HttpResponseMessage>();
+
+        // Act
+        for (var tentativa = 1; tentativa <= 6; tentativa++)
+        {
+            respostas.Add(await NovoCliente().PostAsync("/api/auth/register", CadastroDe(email, NovoApelido())));
+        }
+
+        // Assert
+        respostas.Take(5).Should().OnlyContain(r => r.StatusCode == HttpStatusCode.Accepted);
+        respostas[5].StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+    }
+
     [Theory]
     [InlineData("ab")]
     [InlineData("ana silva")]

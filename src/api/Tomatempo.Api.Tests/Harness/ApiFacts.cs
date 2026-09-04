@@ -70,8 +70,12 @@ public abstract class ApiFacts : IAsyncLifetime
         return new Conta(client, email, apelido, senha);
     }
 
+    /// <summary>
+    /// Corpo como <see cref="JsonElement"/>. Lê por texto de propósito: `ReadFromJsonAsync`
+    /// fecha o stream, e mais de um teste precisa olhar a mesma resposta duas vezes.
+    /// </summary>
     protected static async Task<JsonElement> CorpoDe(HttpResponseMessage response) =>
-        await response.Content.ReadFromJsonAsync<JsonElement>();
+        JsonSerializer.Deserialize<JsonElement>(await response.Content.ReadAsStringAsync());
 
     /// <summary>O `code` estável do problem+json — o front traduz por ele, nunca pela mensagem (§4).</summary>
     protected static async Task<string?> CodigoDe(HttpResponseMessage response)

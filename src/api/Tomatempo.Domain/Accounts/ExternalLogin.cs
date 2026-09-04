@@ -1,3 +1,5 @@
+using Tomatempo.Domain;
+
 namespace Tomatempo.Domain.Accounts;
 
 /// <summary>Identidade devolvida por um provedor externo (hoje só o Google).</summary>
@@ -29,5 +31,20 @@ public static class ExternalLogin
     public static ExternalLoginDecision Decide(
         ExternalIdentity identity,
         bool providerAlreadyLinked,
-        bool emailAlreadyRegistered) => throw new NotImplementedException();
+        bool emailAlreadyRegistered)
+    {
+        if (!identity.EmailVerified)
+        {
+            return ExternalLoginDecision.RejectUnverifiedEmail;
+        }
+
+        if (providerAlreadyLinked)
+        {
+            return ExternalLoginDecision.SignInLinked;
+        }
+
+        return emailAlreadyRegistered
+            ? ExternalLoginDecision.LinkToExistingAccount
+            : ExternalLoginDecision.CreateAccount;
+    }
 }

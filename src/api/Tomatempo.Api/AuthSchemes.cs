@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Identity;
+
 namespace Tomatempo.Api;
 
 /// <summary>
@@ -8,9 +10,9 @@ namespace Tomatempo.Api;
 /// </summary>
 public static class AuthSchemes
 {
-    public const string Application = "Tomatempo.Session";
+    public static readonly string Application = IdentityConstants.ApplicationScheme;
 
-    public const string External = "Tomatempo.External";
+    public static readonly string External = IdentityConstants.ExternalScheme;
 
     /// <summary>Nome do cookie de sessão — sem prefixo de framework, para não anunciar a stack.</summary>
     public const string SessionCookieName = "tomatempo_sessao";

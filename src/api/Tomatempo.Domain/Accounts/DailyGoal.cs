@@ -1,3 +1,5 @@
+using Tomatempo.Domain;
+
 namespace Tomatempo.Domain.Accounts;
 
 /// <summary>Motivo da recusa de uma meta diária. <see cref="None"/> significa aceita.</summary>
@@ -15,8 +17,12 @@ public enum GoalError
 public static class DailyGoal
 {
     /// <summary>Meta escolhida no cadastro: só os quatro valores oferecidos.</summary>
-    public static GoalError ValidateSignup(int pomodoros) => throw new NotImplementedException();
+    public static GoalError ValidateSignup(int pomodoros) =>
+        RuleConstants.AllowedSignupGoals.Contains(pomodoros) ? GoalError.None : GoalError.NotOfferedAtSignup;
 
     /// <summary>Meta trocada depois, pela tela de preferências.</summary>
-    public static GoalError ValidateChange(int pomodoros) => throw new NotImplementedException();
+    public static GoalError ValidateChange(int pomodoros) =>
+        pomodoros >= RuleConstants.MinDailyGoal && pomodoros <= RuleConstants.MaxDailyGoal
+            ? GoalError.None
+            : GoalError.OutOfRange;
 }

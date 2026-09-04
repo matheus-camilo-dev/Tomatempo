@@ -439,6 +439,8 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [ ] Login e recuperação respondem igual para e-mail existente e inexistente; senha errada e e-mail
       inexistente devolvem o mesmo `code`.
 - [ ] Sexta tentativa de login no mesmo minuto responde 429.
+- [ ] Sexta tentativa de cadastro com o mesmo e-mail no mesmo minuto responde 429 — é o limite que
+      contém o resíduo de enumeração do cadastro.
 - [ ] Senha com menos de 8 caracteres ou presente na lista de senhas comuns é recusada no cadastro e no reset.
 - [ ] Token de confirmação serve uma vez; reusado ou passadas 24h, responde erro estável sem confirmar nada.
 - [ ] Token de reset serve uma vez, expira em 1h, e trocar a senha derruba as sessões anteriores.

@@ -58,6 +58,59 @@ jobs:
       # precisa do bundle de produção, onde o service worker existe.
       - run: npm run test:e2e
 
+  api:
+    name: Back-end
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/api
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: "10.0.x"
+      # --locked-mode: nenhuma versão entra por resolução silenciosa; o lockfile manda (§7.2/A08).
+      - name: Restore
+        run: dotnet restore --locked-mode
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+      - name: Formatação
+        run: dotnet format --verify-no-changes --no-restore
+      - name: Testes de domínio + cobertura
+        run: >
+          dotnet test Tomatempo.Domain.Tests/Tomatempo.Domain.Tests.csproj
+          --no-build --configuration Release
+          --collect:"XPlat Code Coverage" --results-directory ./cobertura
+      # Gate de 90% em linha e branch no domínio (§6.6). O resto é medido, não barra.
+      - name: Gate de cobertura do domínio
+        run: python3 ../../.github/scripts/gate_cobertura.py cobertura 90
+      # Os testes de contrato sobem Postgres real via Testcontainers; o runner já tem Docker.
+      - name: Testes de contrato
+        run: dotnet test Tomatempo.Api.Tests/Tomatempo.Api.Tests.csproj --no-build --configuration Release
+      - name: Auditoria de dependências (falha em alta ou crítica)
+        run: |
+          dotnet list package --vulnerable --include-transitive > vulneraveis.txt
+          cat vulneraveis.txt
+          if grep -qE "High|Critical" vulneraveis.txt; then
+            echo "::error::dependência com vulnerabilidade alta ou crítica"
+            exit 1
+          fi
+
+  codeql-csharp:
+    name: CodeQL (C#)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: github/codeql-action/init@f09c1c0a94de965c15400f5634aa42fac8fb8f88 # v3.27.5
+        with:
+          languages: csharp
+          # Sem compilar: a análise lê o fonte, e o build já roda no job do back-end.
+          build-mode: none
+      - uses: github/codeql-action/analyze@f09c1c0a94de965c15400f5634aa42fac8fb8f88 # v3.27.5
+
   secrets:
     name: Varredura de segredos
     runs-on: ubuntu-latest

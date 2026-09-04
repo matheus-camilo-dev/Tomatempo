@@ -1,3 +1,5 @@
+using Tomatempo.Domain;
+
 namespace Tomatempo.Domain.Freezes;
 
 /// <summary>De onde veio (ou para onde foi) cada congelamento (§2, `freeze_ledger`).</summary>
@@ -20,5 +22,6 @@ public sealed record FreezeLedgerEntry(int Delta, FreezeReason Reason, DateOnly?
 public static class FreezeGrants
 {
     /// <summary>O crédito que toda conta nova recebe (§3.10).</summary>
-    public static FreezeLedgerEntry ForSignup(DateTimeOffset now) => throw new NotImplementedException();
+    public static FreezeLedgerEntry ForSignup(DateTimeOffset now) =>
+        new(RuleConstants.SignupFreezeGrant, FreezeReason.Signup, RefDate: null, CreatedAt: now);
 }

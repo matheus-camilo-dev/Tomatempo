@@ -1,3 +1,5 @@
+using Tomatempo.Domain;
+
 namespace Tomatempo.Domain.Accounts;
 
 /// <summary>Os dois tokens de e-mail da conta, que têm prazos diferentes (§3.10).</summary>
@@ -14,9 +16,15 @@ public enum AccountTokenKind
 /// </summary>
 public static class AccountTokens
 {
-    public static TimeSpan LifetimeOf(AccountTokenKind kind) => throw new NotImplementedException();
+    public static TimeSpan LifetimeOf(AccountTokenKind kind) =>
+        kind == AccountTokenKind.EmailConfirmation
+            ? RuleConstants.EmailConfirmationTokenLifetime
+            : RuleConstants.PasswordResetTokenLifetime;
 
-    /// <summary>Vale até o instante da expiração, inclusive; depois disso, não vale mais.</summary>
+    /// <summary>
+    /// Vale até o instante da expiração, inclusive. Emissão no futuro não vale: o token é
+    /// carimbado pelo relógio do servidor, e um instante adiantado é dado corrompido.
+    /// </summary>
     public static bool IsValid(AccountTokenKind kind, DateTimeOffset issuedAt, DateTimeOffset now) =>
-        throw new NotImplementedException();
+        now >= issuedAt && now - issuedAt <= LifetimeOf(kind);
 }

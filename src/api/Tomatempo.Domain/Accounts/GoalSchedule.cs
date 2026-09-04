@@ -1,3 +1,5 @@
+using Tomatempo.Domain;
+
 namespace Tomatempo.Domain.Accounts;
 
 /// <summary>Uma linha de <c>user_goals</c>: a meta e o dia local em que passa a valer (§2).</summary>
@@ -11,11 +13,18 @@ public sealed record GoalEntry(int Pomodoros, DateOnly EffectiveFrom);
 public static class GoalSchedule
 {
     /// <summary>Uma edição feita hoje vale a partir de amanhã, nunca antes.</summary>
-    public static DateOnly EffectiveFromForChange(DateOnly localToday) => throw new NotImplementedException();
+    public static DateOnly EffectiveFromForChange(DateOnly localToday) => localToday.AddDays(1);
 
-    /// <summary>Meta vigente em um dia: a linha de maior <c>EffectiveFrom</c> que já começou.</summary>
+    /// <summary>
+    /// Meta vigente em um dia: a linha de maior <c>EffectiveFrom</c> que já começou.
+    /// Histórico sem nenhuma linha iniciada é impossível — toda conta nasce com a meta do
+    /// cadastro (§3.10) —, então não há defesa aqui: se acontecer, é para estourar alto (§6.8).
+    /// </summary>
     public static int InEffectOn(IReadOnlyCollection<GoalEntry> history, DateOnly localDate) =>
-        throw new NotImplementedException();
+        history.Where(entry => entry.EffectiveFrom <= localDate)
+            .OrderBy(entry => entry.EffectiveFrom)
+            .Last()
+            .Pomodoros;
 
     /// <summary>
     /// Aplica uma edição. Uma segunda edição no mesmo dia **substitui** a linha futura
@@ -24,5 +33,18 @@ public static class GoalSchedule
     public static IReadOnlyList<GoalEntry> ApplyChange(
         IReadOnlyCollection<GoalEntry> history,
         int pomodoros,
-        DateOnly localToday) => throw new NotImplementedException();
+        DateOnly localToday)
+    {
+        var effectiveFrom = EffectiveFromForChange(localToday);
+
+        // Descartar o que ainda não começou é o que substitui a edição anterior do mesmo dia,
+        // em vez de empilhar uma segunda linha para amanhã.
+        var vigentes = history
+            .Where(entry => entry.EffectiveFrom < effectiveFrom)
+            .OrderBy(entry => entry.EffectiveFrom)
+            .ToList();
+
+        vigentes.Add(new GoalEntry(pomodoros, effectiveFrom));
+        return vigentes;
+    }
 }

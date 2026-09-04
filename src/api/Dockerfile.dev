@@ -1,0 +1,25 @@
+# Imagem só de desenvolvimento: SDK completo e `dotnet watch` (§10).
+# A imagem de produção é outra história — entra quando houver nuvem definida, com runtime
+# enxuto, usuário não-root e migrations aplicadas como etapa separada do rollout (§7.2/A05).
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine
+
+WORKDIR /src
+
+# O código vem por volume (hot reload); a imagem carrega só o necessário para restaurar.
+COPY Directory.Build.props Directory.Packages.props nuget.config Tomatempo.slnx ./
+COPY Tomatempo.Domain/Tomatempo.Domain.csproj Tomatempo.Domain/
+COPY Tomatempo.Infrastructure/Tomatempo.Infrastructure.csproj Tomatempo.Infrastructure/
+COPY Tomatempo.Api/Tomatempo.Api.csproj Tomatempo.Api/
+COPY Tomatempo.Domain.Tests/Tomatempo.Domain.Tests.csproj Tomatempo.Domain.Tests/
+COPY Tomatempo.Api.Tests/Tomatempo.Api.Tests.csproj Tomatempo.Api.Tests/
+COPY Tomatempo.Domain/packages.lock.json Tomatempo.Domain/
+COPY Tomatempo.Infrastructure/packages.lock.json Tomatempo.Infrastructure/
+COPY Tomatempo.Api/packages.lock.json Tomatempo.Api/
+COPY Tomatempo.Domain.Tests/packages.lock.json Tomatempo.Domain.Tests/
+COPY Tomatempo.Api.Tests/packages.lock.json Tomatempo.Api.Tests/
+
+RUN dotnet restore Tomatempo.Api/Tomatempo.Api.csproj
+
+EXPOSE 8080
+
+CMD ["dotnet", "watch", "run", "--project", "Tomatempo.Api/Tomatempo.Api.csproj", "--urls", "http://+:8080"]
