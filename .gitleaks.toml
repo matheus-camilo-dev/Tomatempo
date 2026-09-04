@@ -22,6 +22,13 @@ description = "Connection string .NET com Password/Pwd preenchido"
 regex = '''(?i)(password|pwd)\s*=\s*[^\s;"']{6,}'''
 tags = ["database", "credential"]
 
+  [[rules.allowlists]]
+  # `Password=${VAR}` em compose e script: por construção não carrega segredo algum, o valor
+  # vem do ambiente. A forma com valor embutido (`${VAR:-senha}`) fica de fora de propósito,
+  # e continua sendo pega — verificado com caso de regressão antes de entrar aqui.
+  regexTarget = "match"
+  regexes = ['''(?i)(password|pwd)\s*=\s*\$\{[A-Za-z_][A-Za-z0-9_]*(:\?[^}]*)?\}$''']
+
 [allowlist]
 description = "Valores propositalmente falsos e artefatos de teste"
 paths = [

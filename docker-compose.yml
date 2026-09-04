@@ -13,10 +13,10 @@ services:
     environment:
       POSTGRES_DB: tomatempo
       POSTGRES_USER: tomatempo
-      # Banco descartável de máquina local, sem senha: em repositório público, "senha de
-      # desenvolvimento" versionada é só uma senha vazada com desculpa (§7.5). A de produção
-      # vem do ambiente, e a dos testes é gerada pelo Testcontainers.
-      POSTGRES_HOST_AUTH_METHOD: trust
+      # A senha vem do .env, que é ignorado pelo git (§7.5): em repositório público, "senha de
+      # desenvolvimento" versionada é só uma senha vazada com desculpa. `:?` faz o compose
+      # falhar dizendo o que falta, em vez de subir um banco com credencial padrão.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env (veja .env.example)}
     ports:
       - "5432:5432"
     volumes:
@@ -47,7 +47,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__Db: Host=postgres;Port=5432;Database=tomatempo;Username=tomatempo
+      ConnectionStrings__Db: Host=postgres;Port=5432;Database=tomatempo;Username=tomatempo;Password=${POSTGRES_PASSWORD}
       Smtp__Host: mailpit
       Smtp__Port: "1025"
       App__PublicUrl: http://localhost:5173

@@ -303,7 +303,9 @@ criar a conta, para não parecer bug.
   `Signup` no `freeze_ledger` e `user_streaks` zerado. A sessão sai na resposta: o usuário entra logado com
   `email_confirmed = false`.
 - **Confirmação de e-mail**: token aleatório guardado como hash, uso único, validade
-  `EmailConfirmationTokenLifetime = 24h`. Reenvio permitido dentro do rate limit.
+  `EmailConfirmationTokenLifetime = 24h`. Reenvio permitido dentro do rate limit. Consumir um token invalida
+  os demais pendentes do mesmo usuário e tipo — senão um link antigo, capturado antes, sobreviveria ao uso do
+  link novo.
 - **Reset de senha**: mesmo desenho, validade `PasswordResetTokenLifetime = 1h`; ao trocar a senha, todas as
   sessões anteriores do usuário são invalidadas.
 - **Sem enumeração de conta**: `/auth/login` e `/auth/forgot-password` respondem exatamente igual para e-mail
@@ -321,9 +323,12 @@ criar a conta, para não parecer bug.
   o valor guardado e a URL pública obedecem sempre a whitelist `[a-z0-9_]`. Unicidade não distingue maiúsculas
   (`citext`): com `ana_1` cadastrado, `ANA_1` é apelido repetido, não apelido inválido. Nova troca só depois de
   `NicknameChangeLockDays = 30` dias da anterior (§11.8).
-- **Senha**: mínimo de 8 caracteres e recusa de senha que esteja na lista de senhas comuns embutida na
-  aplicação, tanto no cadastro quanto no reset (§7.2/A07). A lista é um arquivo versionado, carregado uma vez em
-  memória; ampliá-la não muda código.
+- **Senha**: entre `PasswordMinLength = 8` e `PasswordMaxLength = 128` caracteres, e recusa de senha que esteja
+  na lista de senhas comuns embutida na aplicação, tanto no cadastro quanto no reset (§7.2/A07). A lista é um
+  arquivo versionado, carregado uma vez em memória; ampliá-la não muda código. O teto existe porque a senha
+  alimenta um hash caro de propósito (Argon2id): sem limite, o tamanho da entrada vira alavanca de consumo.
+- **E-mail**: no máximo `EmailMaxLength = 254` caracteres, o limite de endereço da RFC 5321. Sem isso, um
+  endereço maior que a coluna estoura no banco e vira erro interno em vez de recusa explícita.
 - **Rate limit do login particionado por e-mail** (5/min, §4), não por IP: o alvo do ataque é uma conta
   específica, e a partição por e-mail não revela nada — a resposta continua idêntica para conta existente e
   inexistente.
@@ -380,7 +385,9 @@ GET    /catalog/themes | /catalog/avatars | /catalog/achievements
 ```
 
 **Convenções:** erros em `application/problem+json` com um `code` estável — o front traduz pelo `code`, nunca
-pela mensagem. Rate limit: 5/min em login e recuperação de senha, 60/min em heartbeat, 20/min no resto.
+pela mensagem. Rate limit: 5/min por e-mail em cadastro, login e recuperação de senha; **60/min por IP em todo
+endpoint anônimo de autenticação**, o que cobre confirmação e reset, que não têm e-mail no corpo para
+particionar; 60/min em heartbeat; 20/min por conta no resto.
 
 ---
 
@@ -453,6 +460,12 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [ ] `PUT /me/goal` responde `effectiveFrom` = amanhã local; segunda edição no mesmo dia substitui a linha
       futura em vez de empilhar.
 - [ ] Todo erro sai em `application/problem+json`, com `code` estável e sem stack trace.
+- [ ] Resposta de erro carrega os mesmos cabeçalhos de segurança que a de sucesso.
+- [ ] A senha é guardada em Argon2id; conta com hash PBKDF2 antigo continua entrando e sai do login já
+      regravada em Argon2id.
+- [ ] Senha acima de 128 caracteres e e-mail acima de 254 são recusados com `code` estável, não com erro interno.
+- [ ] Consumir um token de confirmação ou de reset invalida os demais pendentes do mesmo tipo.
+- [ ] Endpoint anônimo de autenticação responde 429 ao passar de 60 requisições por minuto vindas do mesmo IP.
 - [ ] Fechar a aba no minuto 20 credita exatamente 20 minutos; fechar no minuto 3 credita 0.
 - [ ] Abrir o timer em duas abas: a segunda assume, a primeira avisa e para de pontuar.
 - [ ] Manipular o relógio do sistema não altera minuto algum.
@@ -630,14 +643,14 @@ Nada aqui é genérico: cada linha diz o que existe no código do Tomatempo.
 | # | Risco | Controle |
 |---|---|---|
 | A01 | Broken Access Control | Toda consulta filtra por `user_id` extraído do cookie de sessão. **Nenhum identificador de usuário é aceito em payload, rota ou query string.** Recurso de outro dono responde 404 (não 403 — não confirma existência). Teste de contrato obrigatório por endpoint: usuário A não lê nem altera recurso de B. |
-| A02 | Cryptographic Failures | HTTPS obrigatório com HSTS; cookie `HttpOnly` + `Secure` + `SameSite=Lax`; senha via Identity (PBKDF2); tokens de confirmação e reset guardados como hash, uso único, com expiração; nenhum dado sensível em log. |
+| A02 | Cryptographic Failures | HTTPS obrigatório com HSTS; cookie `HttpOnly` + `Secure` + `SameSite=Lax`; senha com **Argon2id** (19 MiB, 2 passagens, paralelismo 1, sal de 16 bytes, saída de 32, gravado no formato PHC), com hash PBKDF2 anterior ainda aceito no login e regravado em Argon2id na hora; tokens de confirmação e reset guardados como hash, de uso único — consumir um invalida os demais pendentes do mesmo tipo —, com expiração; nenhum dado sensível em log. |
 | A03 | Injection | EF Core parametrizado; SQL cru só com parâmetros — interpolação de string em query é proibida e o CI tem regra para isso. React escapa por padrão: `dangerouslySetInnerHTML` é proibido. CSP sem `unsafe-inline`. Apelido validado por whitelist `[a-z0-9_]`. |
 | A04 | Insecure Design | Toda decisão de pontuação acontece no servidor com o relógio dele; tetos e limites explícitos (§3.2, §3.4); sessão única; meta e fuso só valem no dia seguinte. O antifraude é desenho, não filtro. |
 | A05 | Security Misconfiguration | CORS com origem explícita — `AllowAnyOrigin` combinado com credenciais é proibido; `ProblemDetails` sem stack trace em produção; headers de segurança em todas as respostas; OpenAPI exposto só em dev; container roda como usuário não-root; `ASPNETCORE_ENVIRONMENT` nunca `Development` em produção. |
 | A06 | Vulnerable Components | Dependabot ligado; `dotnet list package --vulnerable` e `npm audit` no CI barrando alta e crítica; lockfiles versionados; toda dependência nova é conferida quanto a existir mesmo e ser o pacote oficial (ver §7.3.5). |
 | A07 | Identification and Auth Failures | Rate limit de 5/min em login e reset; lockout do Identity após tentativas; senha mínima de 8 caracteres verificada contra lista de senhas vazadas; e-mail confirmado exigido para pontuar; cookie regenerado no login e invalidado no logout; enumeração de conta evitada (resposta idêntica para e-mail existente ou não). |
 | A08 | Software and Data Integrity | Actions do GitHub fixadas por SHA, não por tag móvel; lockfile obrigatório; nada de `curl \| bash` em build; imagens Docker por digest. |
-| A09 | Logging and Monitoring Failures | Log estruturado de eventos de autenticação (login falho, reset, troca de e-mail, opt-out) **sem** senha, token ou e-mail completo; alerta em pico de falha de login e em erro de job. |
+| A09 | Logging and Monitoring Failures | Log estruturado de eventos de autenticação (cadastro, login falho, confirmação, reset, opt-out) **sem** senha, token ou e-mail completo — o endereço entra mascarado, guardando só a primeira letra e o domínio (`a***@example.com`); alerta em pico de falha de login e em erro de job. |
 | A10 | SSRF | A aplicação não busca URL fornecida por usuário. Avatar é id de catálogo, jamais uma URL — e é assim justamente para não abrir essa porta. |
 
 ### 7.3 Os 5 padrões de código gerado por IA
