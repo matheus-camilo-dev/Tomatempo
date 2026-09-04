@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Tomatempo.Domain.Ports;
 using Tomatempo.Infrastructure.Email;
+using Tomatempo.Infrastructure.Entities;
 using Tomatempo.Infrastructure.Security;
 
 namespace Tomatempo.Infrastructure;
@@ -20,6 +22,10 @@ public static class InfrastructureServices
 
         // O relógio é injetado em tudo (§6.4); `DateTime.UtcNow` não aparece fora daqui.
         services.TryAddTimeProvider();
+
+        // Registrado antes do Identity de propósito: ele usa TryAdd para o hasher padrão,
+        // então quem chega primeiro fica (§7.2/A02).
+        services.AddSingleton<IPasswordHasher<TomatempoUser>, Argon2idPasswordHasher>();
 
         services.AddSingleton<IPasswordPolicy, CommonPasswordPolicy>();
         services.AddScoped<AccountTokenService>();

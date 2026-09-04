@@ -34,6 +34,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AccountWorkflow>();
 builder.Services.AddScoped<IExternalIdentityReader, CookieExternalIdentityReader>();
 builder.Services.AddSingleton<LoginThrottle>();
+builder.Services.AddSingleton<AuthAudit>();
 
 builder.Services
     .AddIdentityCore<TomatempoUser>(options =>
@@ -104,6 +105,21 @@ builder.Services.AddAuthorization();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Resposta de limite também é erro de contrato: problem+json com code estável (§4).
+    options.OnRejected = async (context, _) => await Problems.WriteAsync(
+        context.HttpContext.Response,
+        StatusCodes.Status429TooManyRequests,
+        Problems.TooManyRequests,
+        "Tentativas demais.");
+
+    options.AddPolicy(RateLimitPolicies.AnonymousAuth, context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "sem-ip",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = RuleConstants.AnonymousAuthAttemptsPerMinutePerIp,
+            Window = TimeSpan.FromMinutes(1),
+        }));
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
     {
         // Particionado por conta. Login e recuperação, que são anônimos, têm o próprio limite
@@ -142,16 +158,24 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
 
 app.UseExceptionHandler();
 
-app.Use(async (context, next) =>
+// Os cabeçalhos são escritos no início da resposta, e não aqui na entrada, porque o
+// tratador de exceção limpa a resposta antes de escrever a dele — e levava os cabeçalhos
+// junto, deixando justamente as respostas de erro sem proteção (§7.2/A05).
+app.Use((context, next) =>
 {
-    var headers = context.Response.Headers;
-    headers["X-Content-Type-Options"] = "nosniff";
-    headers["X-Frame-Options"] = "DENY";
-    headers["Referrer-Policy"] = "no-referrer";
-    headers["Cross-Origin-Resource-Policy"] = "same-origin";
-    // A API só devolve JSON: nada aqui pode carregar script, estilo ou moldura.
-    headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'";
-    await next();
+    context.Response.OnStarting(static estado =>
+    {
+        var headers = ((HttpContext)estado).Response.Headers;
+        headers["X-Content-Type-Options"] = "nosniff";
+        headers["X-Frame-Options"] = "DENY";
+        headers["Referrer-Policy"] = "no-referrer";
+        headers["Cross-Origin-Resource-Policy"] = "same-origin";
+        // A API só devolve JSON: nada aqui pode carregar script, estilo ou moldura.
+        headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'";
+        return Task.CompletedTask;
+    }, context);
+
+    return next();
 });
 
 if (!app.Environment.IsDevelopment())

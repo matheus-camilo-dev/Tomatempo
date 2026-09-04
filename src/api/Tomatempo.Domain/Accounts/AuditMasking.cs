@@ -11,5 +11,22 @@ public static class AuditMasking
     private const string Marcador = "***";
 
     /// <summary>Máscara de tamanho fixo: nem o comprimento do nome vaza.</summary>
-    public static string MaskEmail(string? email) => throw new NotImplementedException();
+    public static string MaskEmail(string? email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return Marcador;
+        }
+
+        var arroba = email.IndexOf('@', StringComparison.Ordinal);
+
+        // Sem arroba, ou com a parte local vazia, não dá para dizer o que é nome e o que é
+        // domínio — e chutar seria arriscar deixar passar o endereço inteiro.
+        if (arroba <= 0 || arroba == email.Length - 1)
+        {
+            return Marcador;
+        }
+
+        return $"{email[0]}{Marcador}{email[arroba..]}";
+    }
 }

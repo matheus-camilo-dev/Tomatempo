@@ -15,6 +15,7 @@ public sealed class CommonPasswordPolicy : IPasswordPolicy
     public bool IsAcceptable(string? password) =>
         password is not null
         && password.Length >= RuleConstants.PasswordMinLength
+        && password.Length <= RuleConstants.PasswordMaxLength
         && !Comuns.Contains(password);
 
     private static HashSet<string> Carregar()

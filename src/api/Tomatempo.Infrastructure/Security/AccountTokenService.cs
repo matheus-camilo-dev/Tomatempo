@@ -48,7 +48,17 @@ public sealed class AccountTokenService(TomatempoDbContext db, TimeProvider cloc
             return null;
         }
 
-        row.ConsumedAt = now;
+        // Invalida também os outros links pendentes do mesmo tipo: um link antigo, capturado
+        // antes, não pode sobreviver ao uso do link novo (§3.10).
+        var pendentes = await db.AccountTokens
+            .Where(t => t.UserId == row.UserId && t.Kind == kind && t.ConsumedAt == null)
+            .ToListAsync(cancellationToken);
+
+        foreach (var pendente in pendentes)
+        {
+            pendente.ConsumedAt = now;
+        }
+
         await db.SaveChangesAsync(cancellationToken);
         return row.UserId;
     }

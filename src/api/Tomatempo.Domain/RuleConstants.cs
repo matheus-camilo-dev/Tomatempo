@@ -29,7 +29,17 @@ public static class RuleConstants
     public static readonly TimeSpan EmailConfirmationTokenLifetime = TimeSpan.FromHours(24);
     public static readonly TimeSpan PasswordResetTokenLifetime = TimeSpan.FromHours(1);
 
-    // --- Senha e rate limit (§4, §7.2/A07) ----------------------------------
+    // --- Senha, e-mail e rate limit (§4, §7.2/A07, §3.10) -------------------
     public const int PasswordMinLength = 8;
+
+    /// <summary>Teto da senha: ela alimenta um hash caro de propósito (Argon2id).</summary>
+    public const int PasswordMaxLength = 128;
+
+    /// <summary>Limite de endereço da RFC 5321, e o tamanho da coluna.</summary>
+    public const int EmailMaxLength = 254;
+
     public const int AuthAttemptsPerMinute = 5;
+
+    /// <summary>Teto por IP nos endpoints anônimos de autenticação.</summary>
+    public const int AnonymousAuthAttemptsPerMinutePerIp = 60;
 }

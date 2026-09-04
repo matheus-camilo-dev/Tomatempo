@@ -24,6 +24,8 @@ public sealed class LoginThrottle(TimeProvider clock)
         var chave = email?.Trim() ?? string.Empty;
         var agora = clock.GetUtcNow();
 
+        Expurgar(agora);
+
         var contador = _tentativas.AddOrUpdate(
             chave,
             _ => new Contador(agora, 1),
@@ -32,6 +34,22 @@ public sealed class LoginThrottle(TimeProvider clock)
                 : atual with { Tentativas = atual.Tentativas + 1 });
 
         return contador.Tentativas <= RuleConstants.AuthAttemptsPerMinute;
+    }
+
+    /// <summary>
+    /// Descarta as janelas vencidas. Sem isso o dicionário guarda uma chave por e-mail já
+    /// tentado, e o e-mail vem do cliente — memória do processo crescendo por entrada de
+    /// atacante. A varredura é proporcional ao que está vivo, que é o tráfego de um minuto.
+    /// </summary>
+    private void Expurgar(DateTimeOffset agora)
+    {
+        foreach (var (chave, contador) in _tentativas)
+        {
+            if (agora - contador.InicioDaJanela >= Janela)
+            {
+                _tentativas.TryRemove(chave, out _);
+            }
+        }
     }
 
     private sealed record Contador(DateTimeOffset InicioDaJanela, int Tentativas);

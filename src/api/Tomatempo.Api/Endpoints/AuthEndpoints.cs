@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Tomatempo.Api.Auth;
 using Tomatempo.Api.Services;
+using Tomatempo.Domain;
 using Tomatempo.Domain.Accounts;
 using Tomatempo.Domain.Ports;
 using Tomatempo.Infrastructure;
@@ -17,7 +18,7 @@ public static class AuthEndpoints
 {
     public static void MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
-        var grupo = app.MapGroup("/api/auth");
+        var grupo = app.MapGroup("/api/auth").RequireRateLimiting(RateLimitPolicies.AnonymousAuth);
 
         grupo.MapPost("/register", RegistrarAsync);
         grupo.MapPost("/login", EntrarAsync);
@@ -46,6 +47,7 @@ public static class AuthEndpoints
         IAccountEmailSender emails,
         IPasswordPolicy passwords,
         LoginThrottle throttle,
+        AuthAudit audit,
         TimeProvider clock,
         CancellationToken cancellationToken)
     {
@@ -53,6 +55,7 @@ public static class AuthEndpoints
         // já que a presença do cookie distingue e-mail novo de e-mail que já tem conta.
         if (!throttle.Allow(request.Email))
         {
+            audit.LimiteAtingido("cadastro", request.Email);
             return Problems.Of(StatusCodes.Status429TooManyRequests, Problems.TooManyRequests, "Tentativas demais.");
         }
 
@@ -80,6 +83,7 @@ public static class AuthEndpoints
         var jaCadastrado = await users.FindByEmailAsync(request.Email!);
         if (jaCadastrado is not null)
         {
+            audit.CadastroComEmailJaUsado(request.Email);
             await emails.SendDuplicateRegistrationNoticeAsync(request.Email!, jaCadastrado.Locale, cancellationToken);
             return Results.Accepted();
         }
@@ -109,6 +113,7 @@ public static class AuthEndpoints
         var token = await tokens.IssueAsync(user.Id, AccountTokenKind.EmailConfirmation, cancellationToken);
         await emails.SendEmailConfirmationAsync(user.Email!, token, user.Locale, cancellationToken);
 
+        audit.ContaCriada(user.Email);
         await signIn.SignInAsync(user, isPersistent: true);
         return Results.Accepted();
     }
@@ -118,10 +123,12 @@ public static class AuthEndpoints
         UserManager<TomatempoUser> users,
         SignInManager<TomatempoUser> signIn,
         LoginThrottle throttle,
+        AuthAudit audit,
         CancellationToken cancellationToken)
     {
         if (!throttle.Allow(request.Email))
         {
+            audit.LimiteAtingido("login", request.Email);
             return Problems.Of(StatusCodes.Status429TooManyRequests, Problems.TooManyRequests, "Tentativas demais.");
         }
 
@@ -129,13 +136,19 @@ public static class AuthEndpoints
         if (user is null)
         {
             // Mesma resposta de senha errada: a lista de quem tem conta não sai daqui (§7.2/A07).
+            audit.LoginFalhou(request.Email);
             return Problems.Of(StatusCodes.Status401Unauthorized, Problems.InvalidCredentials, "Credenciais inválidas.");
         }
 
         var resultado = await signIn.PasswordSignInAsync(user, request.Password ?? string.Empty, isPersistent: true, lockoutOnFailure: true);
-        return resultado.Succeeded
-            ? Results.NoContent()
-            : Problems.Of(StatusCodes.Status401Unauthorized, Problems.InvalidCredentials, "Credenciais inválidas.");
+        if (!resultado.Succeeded)
+        {
+            audit.LoginFalhou(request.Email);
+            return Problems.Of(StatusCodes.Status401Unauthorized, Problems.InvalidCredentials, "Credenciais inválidas.");
+        }
+
+        audit.LoginBemSucedido(request.Email);
+        return Results.NoContent();
     }
 
     private static async Task<IResult> SairAsync(SignInManager<TomatempoUser> signIn)
@@ -148,11 +161,13 @@ public static class AuthEndpoints
         TokenRequest request,
         UserManager<TomatempoUser> users,
         AccountTokenService tokens,
+        AuthAudit audit,
         CancellationToken cancellationToken)
     {
         var userId = await tokens.ConsumeAsync(request.Token, AccountTokenKind.EmailConfirmation, cancellationToken);
         if (userId is null)
         {
+            audit.TokenRecusado("confirmação de e-mail");
             return Problems.BadRequest(Problems.InvalidToken, "Token inválido ou vencido.");
         }
 
@@ -160,6 +175,7 @@ public static class AuthEndpoints
         user.EmailConfirmed = true;
         await users.UpdateAsync(user);
 
+        audit.EmailConfirmado(user.Email);
         return Results.NoContent();
     }
 
@@ -215,6 +231,7 @@ public static class AuthEndpoints
         UserManager<TomatempoUser> users,
         AccountTokenService tokens,
         IPasswordPolicy passwords,
+        AuthAudit audit,
         CancellationToken cancellationToken)
     {
         // A senha é conferida antes de gastar o token: recusar por senha fraca não pode custar
@@ -227,6 +244,7 @@ public static class AuthEndpoints
         var userId = await tokens.ConsumeAsync(request.Token, AccountTokenKind.PasswordReset, cancellationToken);
         if (userId is null)
         {
+            audit.TokenRecusado("redefinição de senha");
             return Problems.BadRequest(Problems.InvalidToken, "Token inválido ou vencido.");
         }
 
@@ -237,6 +255,7 @@ public static class AuthEndpoints
         // roubou a senha, que é o motivo de existir o reset (§3.10).
         await users.UpdateSecurityStampAsync(user);
 
+        audit.SenhaRedefinida(user.Email);
         return Results.NoContent();
     }
 
@@ -294,6 +313,7 @@ public static class AuthEndpoints
         UserManager<TomatempoUser> users,
         SignInManager<TomatempoUser> signIn,
         AccountWorkflow workflow,
+        AuthAudit audit,
         IConfiguration config,
         TimeProvider clock,
         CancellationToken cancellationToken)
@@ -312,6 +332,7 @@ public static class AuthEndpoints
         var decisao = ExternalLogin.Decide(identity, vinculado is not null, porEmail is not null);
         if (decisao == ExternalLoginDecision.RejectUnverifiedEmail)
         {
+            audit.LoginExternoRecusado(identity.Email);
             return Results.Redirect($"{publicUrl}/entrar?erro=external_email_not_verified");
         }
 
@@ -325,6 +346,7 @@ public static class AuthEndpoints
         if (decisao != ExternalLoginDecision.SignInLinked)
         {
             await users.AddLoginAsync(user, new UserLoginInfo(identity.Provider, identity.Subject, identity.Provider));
+            audit.ContaExternaVinculada(user.Email);
         }
 
         await http.SignOutAsync(AuthSchemes.External);
@@ -393,5 +415,7 @@ public static class AuthEndpoints
     }
 
     private static bool EmailValido(string? email) =>
-        !string.IsNullOrWhiteSpace(email) && new EmailAddressAttribute().IsValid(email);
+        !string.IsNullOrWhiteSpace(email)
+        && email.Length <= RuleConstants.EmailMaxLength
+        && new EmailAddressAttribute().IsValid(email);
 }

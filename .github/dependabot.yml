@@ -14,4 +14,17 @@ updates:
     schedule:
       interval: weekly
 
-  # NuGet entra na fase 2, quando src/api existir.
+  - package-ecosystem: nuget
+    directory: /src/api
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      test-dependencies:
+        patterns:
+          - "xunit*"
+          - "*Testcontainers*"
+          - "NSubstitute*"
+          - "AwesomeAssertions*"
+          - "coverlet*"
+          - "Microsoft.NET.Test.Sdk"
