@@ -36,9 +36,11 @@ paths = [
   '''\.env\.example$''',
   '''(^|/)docs/''',
 ]
+# Os marcadores precisam aparecer como palavra, e não como pedaço de outra: `changeme` e
+# `fake-client-id` passam; um segredo de verdade que por acaso contenha essas letras no meio
+# de um token, não. Antes era substring solta, o que deixava `...livefakeXYZ...` passar.
 regexes = [
-  '''changeme''',
+  '''(?i)(^|[^a-z0-9])(changeme|dummy|placeholder|fake)([^a-z0-9]|$)''',
   '''your[-_]?(client[-_]?secret|api[-_]?key|password)''',
   '''@example\.com''',
-  '''(?i)dummy|placeholder|fake''',
 ]

@@ -24,6 +24,9 @@ public sealed record OnboardingRequest(string? Nickname, int Goal, string? TimeZ
 
 public sealed record GoalRequest(int Pomodoros);
 
+/// <summary>Senha atual, exigida para excluir conta que tenha uma (§3.10).</summary>
+public sealed record DeleteAccountRequest(string? Password);
+
 /// <summary>
 /// Preferências alteráveis hoje. `avatarId` e `themePresetId` ficam de fora de propósito: os
 /// catálogos que os validariam ainda não existem (§2, catálogos estáticos), e aceitar string

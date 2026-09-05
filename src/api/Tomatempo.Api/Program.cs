@@ -15,6 +15,10 @@ using Tomatempo.Infrastructure.Entities;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// A resposta não precisa dizer em que servidor roda; dizer só ajuda quem procura alvo por
+// versão conhecida (§7.2/A05).
+builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
+
 // --- Log estruturado (§9) ---------------------------------------------------
 builder.Services.AddSerilog(config => config
     .ReadFrom.Configuration(builder.Configuration)
@@ -70,6 +74,9 @@ if (!string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(goo
         options.ClientId = googleClientId;
         options.ClientSecret = googleClientSecret;
         options.SignInScheme = AuthSchemes.External;
+        // Explícito para não depender de default: sem PKCE, um código interceptado no
+        // redirecionamento vira sessão para quem o interceptou (§7.3.4).
+        options.UsePkce = true;
         // É esta claim que decide entrar ou recusar (§3.10) — sem mapeá-la, a decisão viraria
         // um "confio no provedor" implícito.
         options.ClaimActions.MapJsonKey("email_verified", "email_verified", "boolean");
@@ -187,6 +194,37 @@ if (!string.IsNullOrWhiteSpace(webOrigin))
 {
     app.UseCors();
 }
+
+// Formulário de outro site só consegue enviar estes três tipos. Recusá-los em quem muda
+// estado fecha o caminho de CSRF que sobra além do SameSite=Lax — e nenhum cliente legítimo
+// do Tomatempo manda formulário: a API fala JSON (§7.2/A05).
+app.Use(async (context, next) =>
+{
+    string[] tiposDeFormulario =
+    [
+        "application/x-www-form-urlencoded",
+        "multipart/form-data",
+        "text/plain",
+    ];
+
+    var mudaEstado = !HttpMethods.IsGet(context.Request.Method)
+        && !HttpMethods.IsHead(context.Request.Method)
+        && !HttpMethods.IsOptions(context.Request.Method);
+
+    var tipo = context.Request.ContentType;
+    if (mudaEstado && tipo is not null
+        && tiposDeFormulario.Any(t => tipo.StartsWith(t, StringComparison.OrdinalIgnoreCase)))
+    {
+        await Problems.WriteAsync(
+            context.Response,
+            StatusCodes.Status415UnsupportedMediaType,
+            Problems.UnsupportedMediaType,
+            "Esta API aceita apenas JSON.");
+        return;
+    }
+
+    await next();
+});
 
 app.UseAuthentication();
 app.UseAuthorization();

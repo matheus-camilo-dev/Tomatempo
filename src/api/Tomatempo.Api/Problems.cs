@@ -26,6 +26,7 @@ public static class Problems
     public const string OnboardingRequired = "onboarding_required";
     public const string OnboardingAlreadyCompleted = "onboarding_already_completed";
     public const string TooManyRequests = "too_many_requests";
+    public const string UnsupportedMediaType = "unsupported_media_type";
     public const string InternalError = "internal_error";
 
     public static IResult Of(int status, string code, string title) =>

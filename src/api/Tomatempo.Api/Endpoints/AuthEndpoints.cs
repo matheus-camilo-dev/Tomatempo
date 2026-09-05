@@ -343,9 +343,23 @@ public static class AuthEndpoints
             _ => await CriarContaExternaAsync(identity, users, workflow, clock, cancellationToken),
         };
 
+        // Conta que não terminou de nascer não vira sessão: sem isto, uma falha na criação
+        // deixaria o usuário logado sobre uma linha que não existe no banco (§3.10).
+        if (user is null)
+        {
+            return Results.Redirect($"{publicUrl}/entrar?erro=external_login_failed");
+        }
+
         if (decisao != ExternalLoginDecision.SignInLinked)
         {
-            await users.AddLoginAsync(user, new UserLoginInfo(identity.Provider, identity.Subject, identity.Provider));
+            var vinculo = await users.AddLoginAsync(
+                user, new UserLoginInfo(identity.Provider, identity.Subject, identity.Provider));
+
+            if (!vinculo.Succeeded)
+            {
+                return Results.Redirect($"{publicUrl}/entrar?erro=external_login_failed");
+            }
+
             audit.ContaExternaVinculada(user.Email);
         }
 
@@ -355,7 +369,8 @@ public static class AuthEndpoints
         return Results.Redirect(user.OnboardingCompletedAt is null ? $"{publicUrl}/onboarding" : $"{publicUrl}/");
     }
 
-    private static async Task<TomatempoUser> CriarContaExternaAsync(
+    /// <summary>Devolve <c>null</c> quando o Identity recusa a criação — e-mail inválido, corrida.</summary>
+    private static async Task<TomatempoUser?> CriarContaExternaAsync(
         ExternalIdentity identity,
         UserManager<TomatempoUser> users,
         AccountWorkflow workflow,
@@ -378,7 +393,12 @@ public static class AuthEndpoints
             OnboardingCompletedAt = null,
         };
 
-        await users.CreateAsync(user);
+        var criado = await users.CreateAsync(user);
+        if (!criado.Succeeded)
+        {
+            return null;
+        }
+
         await workflow.SemearContaAsync(user, meta: null, cancellationToken);
         return user;
     }

@@ -1,6 +1,10 @@
 # Imagem só de desenvolvimento: SDK completo e `dotnet watch` (§10).
-# A imagem de produção é outra história — entra quando houver nuvem definida, com runtime
-# enxuto, usuário não-root e migrations aplicadas como etapa separada do rollout (§7.2/A05).
+#
+# Este container monta o código da própria máquina do desenvolvedor. No Docker Desktop o bind
+# mount aparece como root dentro do container, então um usuário sem privilégio não consegue
+# escrever em `obj/` e o build morre — verificado, não suposto. O controle de usuário não-root
+# da §7.2/A05 vale para a imagem de produção, que roda com o código copiado em vez de montado,
+# e entra junto com ela, com runtime enxuto e migrations como etapa separada do rollout.
 FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine
 
 WORKDIR /src
@@ -22,4 +26,4 @@ RUN dotnet restore Tomatempo.Api/Tomatempo.Api.csproj
 
 EXPOSE 8080
 
-CMD ["dotnet", "watch", "run", "--project", "Tomatempo.Api/Tomatempo.Api.csproj", "--urls", "http://+:8080"]
+CMD ["dotnet", "watch", "run", "--non-interactive", "--project", "Tomatempo.Api/Tomatempo.Api.csproj", "--urls", "http://+:8080"]

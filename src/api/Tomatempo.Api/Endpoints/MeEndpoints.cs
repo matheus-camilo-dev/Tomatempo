@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Tomatempo.Api.Services;
 using Tomatempo.Domain.Accounts;
 using Tomatempo.Infrastructure.Entities;
@@ -16,6 +17,7 @@ public static class MeEndpoints
         grupo.MapPatch("/", AtualizarPreferenciasAsync);
         grupo.MapPut("/goal", AlterarMetaAsync);
         grupo.MapGet("/freezes", VerCongelamentosAsync);
+        grupo.MapDelete("/", ExcluirContaAsync);
     }
 
     private static async Task<IResult> VerPerfilAsync(
@@ -143,6 +145,37 @@ public static class MeEndpoints
         }
 
         return Results.Ok(await workflow.AlterarMetaAsync(user, request.Pomodoros, cancellationToken));
+    }
+
+    /// <summary>
+    /// Exclusão de conta (§7.7). Quem tem senha precisa digitá-la: sessão esquecida aberta,
+    /// ou roubada, não apaga a conta de ninguém. Conta criada pelo Google não tem senha para
+    /// digitar, e sai com a própria sessão.
+    ///
+    /// As linhas de meta, ledger, streak, token e vínculo externo saem por cascata no banco —
+    /// nada de dado pessoal sobrando órfão depois do pedido.
+    /// </summary>
+    private static async Task<IResult> ExcluirContaAsync(
+        // DELETE não infere corpo em Minimal API; sem o atributo, o pipeline nem sobe.
+        [FromBody] DeleteAccountRequest request,
+        ClaimsPrincipal principal,
+        UserManager<TomatempoUser> users,
+        SignInManager<TomatempoUser> signIn,
+        CancellationToken cancellationToken)
+    {
+        var user = (await users.GetUserAsync(principal))!;
+
+        if (await users.HasPasswordAsync(user)
+            && !await users.CheckPasswordAsync(user, request.Password ?? string.Empty))
+        {
+            return Problems.Of(
+                StatusCodes.Status401Unauthorized, Problems.InvalidCredentials, "Credenciais inválidas.");
+        }
+
+        await signIn.SignOutAsync();
+        await users.DeleteAsync(user);
+
+        return Results.NoContent();
     }
 
     private static async Task<IResult> VerCongelamentosAsync(

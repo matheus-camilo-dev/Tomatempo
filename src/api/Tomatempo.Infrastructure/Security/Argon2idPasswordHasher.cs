@@ -48,6 +48,14 @@ public sealed class Argon2idPasswordHasher : IPasswordHasher<TomatempoUser>
         string hashedPassword,
         string providedPassword)
     {
+        // Senha vazia é entrada real — é o que chega quando o corpo vem sem o campo — e a
+        // biblioteca de derivação não aceita chave de tamanho zero. Falha de verificação,
+        // nunca exceção subindo como erro interno.
+        if (string.IsNullOrEmpty(providedPassword))
+        {
+            return PasswordVerificationResult.Failed;
+        }
+
         if (!hashedPassword.StartsWith($"${Identificador}$", StringComparison.Ordinal))
         {
             // Conta anterior à troca: confere no formato antigo e pede a regravação.

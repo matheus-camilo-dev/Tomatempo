@@ -53,6 +53,7 @@ public sealed class TomatempoDbContext(DbContextOptions<TomatempoDbContext> opti
             goal.Property(g => g.EffectiveFrom).HasColumnName("effective_from");
             goal.Property(g => g.CreatedAt).HasColumnName("created_at");
             goal.HasIndex(g => new { g.UserId, g.EffectiveFrom }).IsUnique();
+            goal.HasOne<TomatempoUser>().WithMany().HasForeignKey(g => g.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<FreezeLedgerRow>(entry =>
@@ -66,6 +67,7 @@ public sealed class TomatempoDbContext(DbContextOptions<TomatempoDbContext> opti
             entry.Property(e => e.RefDate).HasColumnName("ref_date");
             entry.Property(e => e.CreatedAt).HasColumnName("created_at");
             entry.HasIndex(e => new { e.UserId, e.CreatedAt });
+            entry.HasOne<TomatempoUser>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<UserStreakRow>(streak =>
@@ -78,6 +80,7 @@ public sealed class TomatempoDbContext(DbContextOptions<TomatempoDbContext> opti
             streak.Property(s => s.LastClosedLocalDate).HasColumnName("last_closed_local_date");
             streak.Property(s => s.FreezeBalance).HasColumnName("freeze_balance");
             streak.Property(s => s.ConsecutiveGoalDays).HasColumnName("consecutive_goal_days");
+            streak.HasOne<TomatempoUser>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<AccountTokenRow>(token =>
@@ -91,6 +94,7 @@ public sealed class TomatempoDbContext(DbContextOptions<TomatempoDbContext> opti
             token.Property(t => t.IssuedAt).HasColumnName("issued_at");
             token.Property(t => t.ConsumedAt).HasColumnName("consumed_at");
             token.HasIndex(t => t.TokenHash).IsUnique();
+            token.HasOne<TomatempoUser>().WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

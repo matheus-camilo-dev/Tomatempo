@@ -187,6 +187,8 @@ namespace Tomatempo.Infrastructure.Migrations
                     b.HasIndex("TokenHash")
                         .IsUnique();
 
+                    b.HasIndex("UserId");
+
                     b.ToTable("account_tokens", (string)null);
                 });
 
@@ -370,7 +372,6 @@ namespace Tomatempo.Infrastructure.Migrations
             modelBuilder.Entity("Tomatempo.Infrastructure.Entities.UserStreakRow", b =>
                 {
                     b.Property<Guid>("UserId")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
@@ -442,6 +443,42 @@ namespace Tomatempo.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
+                {
+                    b.HasOne("Tomatempo.Infrastructure.Entities.TomatempoUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Tomatempo.Infrastructure.Entities.AccountTokenRow", b =>
+                {
+                    b.HasOne("Tomatempo.Infrastructure.Entities.TomatempoUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Tomatempo.Infrastructure.Entities.FreezeLedgerRow", b =>
+                {
+                    b.HasOne("Tomatempo.Infrastructure.Entities.TomatempoUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Tomatempo.Infrastructure.Entities.UserGoalRow", b =>
+                {
+                    b.HasOne("Tomatempo.Infrastructure.Entities.TomatempoUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Tomatempo.Infrastructure.Entities.UserStreakRow", b =>
                 {
                     b.HasOne("Tomatempo.Infrastructure.Entities.TomatempoUser", null)
                         .WithMany()
