@@ -93,8 +93,8 @@ export const resources = {
       freeze: {
         reason: {
           Signup: 'Cadastro',
-          Milestone: 'Sete dias seguidos de meta batida',
-          RankingReward: 'Prêmio do ranking semanal',
+          StreakMilestone: 'Sete dias seguidos de meta batida',
+          WeeklyRanking: 'Prêmio do ranking semanal',
           DayCovered: 'Dia coberto',
           CapOverflow: 'Acima do teto',
           unknown: 'Outro motivo',
@@ -220,8 +220,8 @@ export const resources = {
       freeze: {
         reason: {
           Signup: 'Sign-up',
-          Milestone: 'Seven days in a row on goal',
-          RankingReward: 'Weekly ranking reward',
+          StreakMilestone: 'Seven days in a row on goal',
+          WeeklyRanking: 'Weekly ranking reward',
           DayCovered: 'Day covered',
           CapOverflow: 'Over the cap',
           unknown: 'Other reason',

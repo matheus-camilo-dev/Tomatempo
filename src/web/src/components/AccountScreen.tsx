@@ -14,7 +14,7 @@ import { formatIsoDate } from '../lib/formatDate'
 import { FormAlert, GoalField, SCREEN_CLASS, SUBMIT_CLASS, TextField } from './AccountFields'
 
 /** Motivos que o ledger devolve (§2, `freeze_ledger`). Motivo fora da lista não vira texto cru na tela. */
-const FREEZE_REASONS = ['Signup', 'Milestone', 'RankingReward', 'DayCovered', 'CapOverflow']
+const FREEZE_REASONS = ['Signup', 'StreakMilestone', 'WeeklyRanking', 'DayCovered', 'CapOverflow']
 
 export function AccountScreen() {
   const { t } = useTranslation()

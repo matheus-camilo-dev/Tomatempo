@@ -65,7 +65,7 @@ describe('tela da conta', () => {
         balance: 3,
         entries: [
           { delta: 2, reason: 'Signup', refDate: null, createdAt: '2026-09-01T12:00:00Z' },
-          { delta: 1, reason: 'Milestone', refDate: '2026-09-08', createdAt: '2026-09-08T03:00:00Z' },
+          { delta: 1, reason: 'StreakMilestone', refDate: '2026-09-08', createdAt: '2026-09-08T03:00:00Z' },
         ],
       }),
     )
@@ -76,7 +76,7 @@ describe('tela da conta', () => {
     const extrato = within(screen.getByTestId('freezes-ledger')).getAllByRole('listitem')
     expect(extrato).toHaveLength(2)
     expect(extrato[0]).toHaveTextContent(pt.freeze.reason.Signup)
-    expect(extrato[1]).toHaveTextContent(pt.freeze.reason.Milestone)
+    expect(extrato[1]).toHaveTextContent(pt.freeze.reason.StreakMilestone)
   })
 
   it('deve sair e voltar para a tela pública', async () => {
