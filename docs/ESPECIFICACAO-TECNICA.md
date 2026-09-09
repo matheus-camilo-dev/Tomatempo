@@ -341,7 +341,9 @@ criar a conta, para não parecer bug.
   sessão roubada não apaga conta sozinha. Remove o usuário e tudo que é dele (metas, ledger, streak, tokens e
   vínculos externos, por cascata no banco); e-mail e apelido voltam a ficar livres. Conta criada pelo Google,
   que não tem senha, é excluída só com a sessão. A anonimização das linhas de ranking já fechadas (§7.7) entra
-  junto com o ranking, na fase 3.
+  junto com o ranking, na fase 3. Para a tela saber qual dos dois casos pedir, `GET /me` devolve `hasPassword`
+  — um booleano derivado, nunca o hash, uma dica ou qualquer parte da senha; sem ele o front só descobriria
+  tentando excluir e apanhando 401, o que é pedir confirmação de exclusão duas vezes.
 - Constantes em `Tomatempo.Domain` (§8.4): `SignupFreezeGrant = 2`, `DefaultDailyGoal = 4`,
   `AllowedDailyGoals = {2,4,6,8}`, `NicknameMinLength = 3`, `NicknameMaxLength = 20`,
   `NicknameChangeLockDays = 30`, `EmailConfirmationTokenLifetime = 24h`, `PasswordResetTokenLifetime = 1h`.
@@ -363,7 +365,7 @@ POST   /auth/confirm-email       {token}
 POST   /auth/resend-confirmation → 202 sempre, com ou sem conta naquele e-mail
 POST   /auth/forgot-password     {email}
 POST   /auth/reset-password      {token, password}
-GET    /me                       → perfil, onboardingRequired, meta vigente e futura, streak, freezes, preferências
+GET    /me                       → perfil, onboardingRequired, hasPassword, meta vigente e futura, streak, freezes, preferências
 PATCH  /me                       {nickname?, avatarId?, timeZone?, locale?, colorMode?, themePresetId?, rankingOptOut?}
 PUT    /me/goal                  {pomodoros} → responde effectiveFrom (sempre amanhã)
 GET    /me/freezes               → saldo + ledger explicado (a origem de cada crédito)
@@ -506,6 +508,7 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [ ] A identidade nunca sai do cliente: nenhum identificador de usuário é guardado ou enviado; o cookie decide.
 - [ ] O fuso proposto no onboarding vem do navegador e continua editável antes de confirmar.
 - [ ] Excluir a conta pede a senha quando a conta tem uma, e não pede quando a conta veio do Google.
+- [ ] `GET /me` diz se a conta tem senha, sem devolver hash, dica ou qualquer parte dela.
 - [ ] Volta do Google com erro cai em `/entrar` com a mensagem traduzida do `erro` da URL; conta já completa
       cai no timer.
 - [ ] `/confirmar-email` consome o token da URL e mostra o resultado; token recusado vira mensagem, não tela
