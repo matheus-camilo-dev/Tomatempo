@@ -464,7 +464,7 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [x] O cookie de sessão sai `HttpOnly`, `Secure` e `SameSite=Lax`; o logout o invalida.
 - [x] Endpoint autenticado sem cookie responde 401, e identificador de usuário vindo do cliente é ignorado.
 - [x] Google com e-mail já cadastrado entra na conta existente; sem `email_verified` do provedor, é recusado.
-- [ ] Conta criada pelo Google responde `onboardingRequired` até escolher apelido, meta e fuso, e nesse estado
+- [x] Conta criada pelo Google responde `onboardingRequired` até escolher apelido, meta e fuso, e nesse estado
       os endpoints de sessão respondem 409.
 - [x] Apelido fora da whitelist, curto demais, longo demais ou repetido em outra caixa é recusado.
 - [x] `PUT /me/goal` responde `effectiveFrom` = amanhã local; segunda edição no mesmo dia substitui a linha
@@ -482,9 +482,9 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [x] Endpoint que muda estado recusa requisição com `Content-Type` de formulário.
 - [x] Nenhuma resposta traz o cabeçalho `Server`.
 - [x] O fluxo do Google está configurado com PKCE.
-- [ ] Fechar a aba no minuto 20 credita exatamente 20 minutos; fechar no minuto 3 credita 0.
+- [x] Fechar a aba no minuto 20 credita exatamente 20 minutos; fechar no minuto 3 credita 0.
 - [ ] Abrir o timer em duas abas: a segunda assume, a primeira avisa e para de pontuar.
-- [ ] Manipular o relógio do sistema não altera minuto algum.
+- [x] Manipular o relógio do sistema não altera minuto algum.
 - [ ] Baixar a meta às 23h não salva a streak do dia; a nova meta aparece só amanhã.
 - [ ] Dia sem meta batida consome 1 freeze e mantém a streak; sem freeze, zera.
 - [ ] 7 dias consecutivos de meta batida creditam +1 freeze; dia coberto por freeze reseta o contador do marco.
