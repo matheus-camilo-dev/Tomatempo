@@ -501,7 +501,8 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [ ] Erro da API vira mensagem traduzida a partir do `code`; texto cru vindo do servidor nunca chega à tela.
 - [ ] Conta com onboarding pendente cai na tela de onboarding e não sai dela sem apelido, meta e fuso.
 - [ ] Recarregar com sessão válida reidrata o usuário por `GET /me`, sem pedir login de novo.
-- [ ] 401 em qualquer chamada derruba o estado local de sessão e devolve a pessoa à tela pública.
+- [ ] 401 com `code` `unauthenticated` em qualquer chamada derruba o estado local de sessão e devolve a
+      pessoa à tela pública; 401 de senha errada na exclusão, que traz `invalid_credentials`, não desloga.
 - [ ] Sair encerra a sessão no servidor e limpa o estado local, mesmo que a chamada de logout falhe.
 - [ ] A tela da conta mostra a meta corrente e, havendo edição pendente, a data em que a nova meta passa a valer.
 - [ ] O saldo e o extrato de congelamentos vêm de `GET /me/freezes`, nunca de contagem feita no cliente.
