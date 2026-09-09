@@ -506,6 +506,13 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [ ] A identidade nunca sai do cliente: nenhum identificador de usuário é guardado ou enviado; o cookie decide.
 - [ ] O fuso proposto no onboarding vem do navegador e continua editável antes de confirmar.
 - [ ] Excluir a conta pede a senha quando a conta tem uma, e não pede quando a conta veio do Google.
+- [ ] Volta do Google com erro cai em `/entrar` com a mensagem traduzida do `erro` da URL; conta já completa
+      cai no timer.
+- [ ] `/confirmar-email` consome o token da URL e mostra o resultado; token recusado vira mensagem, não tela
+      quebrada.
+- [ ] Pedir link de recuperação mostra a mesma tela com ou sem conta no endereço — o front não revela nada que
+      a API esconde.
+- [ ] `/nova-senha` troca a senha usando o token da URL e leva a pessoa para o login.
 
 ### Fase 3 — Ranking, perfil e conquistas
 
