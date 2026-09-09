@@ -449,37 +449,37 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 
 **Pronto quando:**
 
-- [ ] O cadastro credita 2 freezes com linha `Signup` no ledger, streak 0 e nenhum minuto.
-- [ ] Cadastro com e-mail já usado responde igual ao de e-mail novo e não cria a segunda conta.
-- [ ] Login e recuperação respondem igual para e-mail existente e inexistente; senha errada e e-mail
+- [x] O cadastro credita 2 freezes com linha `Signup` no ledger, streak 0 e nenhum minuto.
+- [x] Cadastro com e-mail já usado responde igual ao de e-mail novo e não cria a segunda conta.
+- [x] Login e recuperação respondem igual para e-mail existente e inexistente; senha errada e e-mail
       inexistente devolvem o mesmo `code`.
-- [ ] Sexta tentativa de login no mesmo minuto responde 429.
-- [ ] Sexta tentativa de cadastro com o mesmo e-mail no mesmo minuto responde 429 — é o limite que
+- [x] Sexta tentativa de login no mesmo minuto responde 429.
+- [x] Sexta tentativa de cadastro com o mesmo e-mail no mesmo minuto responde 429 — é o limite que
       contém o resíduo de enumeração do cadastro.
-- [ ] Senha com menos de 8 caracteres ou presente na lista de senhas comuns é recusada no cadastro e no reset.
-- [ ] Token de confirmação serve uma vez; reusado ou passadas 24h, responde erro estável sem confirmar nada.
-- [ ] Token de reset serve uma vez, expira em 1h, e trocar a senha derruba as sessões anteriores.
-- [ ] O cookie de sessão sai `HttpOnly`, `Secure` e `SameSite=Lax`; o logout o invalida.
-- [ ] Endpoint autenticado sem cookie responde 401, e identificador de usuário vindo do cliente é ignorado.
-- [ ] Google com e-mail já cadastrado entra na conta existente; sem `email_verified` do provedor, é recusado.
+- [x] Senha com menos de 8 caracteres ou presente na lista de senhas comuns é recusada no cadastro e no reset.
+- [x] Token de confirmação serve uma vez; reusado ou passadas 24h, responde erro estável sem confirmar nada.
+- [x] Token de reset serve uma vez, expira em 1h, e trocar a senha derruba as sessões anteriores.
+- [x] O cookie de sessão sai `HttpOnly`, `Secure` e `SameSite=Lax`; o logout o invalida.
+- [x] Endpoint autenticado sem cookie responde 401, e identificador de usuário vindo do cliente é ignorado.
+- [x] Google com e-mail já cadastrado entra na conta existente; sem `email_verified` do provedor, é recusado.
 - [ ] Conta criada pelo Google responde `onboardingRequired` até escolher apelido, meta e fuso, e nesse estado
       os endpoints de sessão respondem 409.
-- [ ] Apelido fora da whitelist, curto demais, longo demais ou repetido em outra caixa é recusado.
-- [ ] `PUT /me/goal` responde `effectiveFrom` = amanhã local; segunda edição no mesmo dia substitui a linha
+- [x] Apelido fora da whitelist, curto demais, longo demais ou repetido em outra caixa é recusado.
+- [x] `PUT /me/goal` responde `effectiveFrom` = amanhã local; segunda edição no mesmo dia substitui a linha
       futura em vez de empilhar.
-- [ ] Todo erro sai em `application/problem+json`, com `code` estável e sem stack trace.
-- [ ] Resposta de erro carrega os mesmos cabeçalhos de segurança que a de sucesso.
-- [ ] A senha é guardada em Argon2id; conta com hash PBKDF2 antigo continua entrando e sai do login já
+- [x] Todo erro sai em `application/problem+json`, com `code` estável e sem stack trace.
+- [x] Resposta de erro carrega os mesmos cabeçalhos de segurança que a de sucesso.
+- [x] A senha é guardada em Argon2id; conta com hash PBKDF2 antigo continua entrando e sai do login já
       regravada em Argon2id.
-- [ ] Senha acima de 128 caracteres e e-mail acima de 254 são recusados com `code` estável, não com erro interno.
-- [ ] Consumir um token de confirmação ou de reset invalida os demais pendentes do mesmo tipo.
-- [ ] Endpoint anônimo de autenticação responde 429 ao passar de 60 requisições por minuto vindas do mesmo IP.
-- [ ] Excluir a conta exige a senha atual quando existe uma; a sessão morre, e e-mail e apelido voltam a ficar
+- [x] Senha acima de 128 caracteres e e-mail acima de 254 são recusados com `code` estável, não com erro interno.
+- [x] Consumir um token de confirmação ou de reset invalida os demais pendentes do mesmo tipo.
+- [x] Endpoint anônimo de autenticação responde 429 ao passar de 60 requisições por minuto vindas do mesmo IP.
+- [x] Excluir a conta exige a senha atual quando existe uma; a sessão morre, e e-mail e apelido voltam a ficar
       livres para um cadastro novo.
-- [ ] Conta criada pelo Google, que não tem senha, é excluída só com a sessão.
-- [ ] Endpoint que muda estado recusa requisição com `Content-Type` de formulário.
-- [ ] Nenhuma resposta traz o cabeçalho `Server`.
-- [ ] O fluxo do Google está configurado com PKCE.
+- [x] Conta criada pelo Google, que não tem senha, é excluída só com a sessão.
+- [x] Endpoint que muda estado recusa requisição com `Content-Type` de formulário.
+- [x] Nenhuma resposta traz o cabeçalho `Server`.
+- [x] O fluxo do Google está configurado com PKCE.
 - [ ] Fechar a aba no minuto 20 credita exatamente 20 minutos; fechar no minuto 3 credita 0.
 - [ ] Abrir o timer em duas abas: a segunda assume, a primeira avisa e para de pontuar.
 - [ ] Manipular o relógio do sistema não altera minuto algum.
@@ -489,8 +489,23 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [ ] Teto de 5 respeitado, com `CapOverflow` registrado.
 - [ ] Modo avião: 3 pomodoros contam para meta/streak ao reconectar e nenhum minuto vai para o ranking.
 - [ ] Reenviar o mesmo lote offline não duplica nada.
-- [ ] Conta nova criada após uso anônimo começa zerada.
+- [x] Conta nova criada após uso anônimo começa zerada.
 - [ ] Suíte de domínio cobre virada de dia, horário de verão, offsets :30 e :45 e virada de ano.
+
+**Pronto quando — front da conta (a tela conversando com a API):**
+
+- [ ] Visitante anônimo usa o timer sem nenhuma chamada à API; o CTA de cadastro é o único caminho para a conta.
+- [ ] Cadastro pela tela já entra logado e mostra o aviso de e-mail não confirmado, com o botão de reenviar.
+- [ ] Erro da API vira mensagem traduzida a partir do `code`; texto cru vindo do servidor nunca chega à tela.
+- [ ] Conta com onboarding pendente cai na tela de onboarding e não sai dela sem apelido, meta e fuso.
+- [ ] Recarregar com sessão válida reidrata o usuário por `GET /me`, sem pedir login de novo.
+- [ ] 401 em qualquer chamada derruba o estado local de sessão e devolve a pessoa à tela pública.
+- [ ] Sair encerra a sessão no servidor e limpa o estado local, mesmo que a chamada de logout falhe.
+- [ ] A tela da conta mostra a meta corrente e, havendo edição pendente, a data em que a nova meta passa a valer.
+- [ ] O saldo e o extrato de congelamentos vêm de `GET /me/freezes`, nunca de contagem feita no cliente.
+- [ ] A identidade nunca sai do cliente: nenhum identificador de usuário é guardado ou enviado; o cookie decide.
+- [ ] O fuso proposto no onboarding vem do navegador e continua editável antes de confirmar.
+- [ ] Excluir a conta pede a senha quando a conta tem uma, e não pede quando a conta veio do Google.
 
 ### Fase 3 — Ranking, perfil e conquistas
 
