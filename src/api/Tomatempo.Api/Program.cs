@@ -36,7 +36,18 @@ builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadReq
 builder.Services.AddTomatempoInfrastructure(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AccountWorkflow>();
+builder.Services.AddScoped<SessionWorkflow>();
+builder.Services.AddScoped<SessionScavenger>();
 builder.Services.AddScoped<IExternalIdentityReader, CookieExternalIdentityReader>();
+
+// O varredor não sobe no ambiente de teste: uma varredura acordando sozinha encerraria a
+// sessão que o cenário acabou de abrir, e a suíte deixaria de ser determinística. Os testes
+// chamam `SweepAsync` no instante que escolhem.
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddHostedService<SessionScavengerService>();
+}
+
 builder.Services.AddSingleton<LoginThrottle>();
 builder.Services.AddSingleton<AuthAudit>();
 
@@ -132,11 +143,21 @@ builder.Services.AddRateLimiter(options =>
         // Particionado por conta. Login e recuperação, que são anônimos, têm o próprio limite
         // por e-mail em LoginThrottle (§4).
         var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return userId is null
-            ? RateLimitPartition.GetNoLimiter("anonimo")
+        if (userId is null) return RateLimitPartition.GetNoLimiter("anonimo");
+
+        // Heartbeat tem partição própria, e não soma no teto por conta: são 2/min por sessão
+        // aberta, e cobrá-los do mesmo balde deixaria a pessoa sem orçamento para o resto (§4).
+        var ehHeartbeat = context.GetEndpoint()?.Metadata.GetMetadata<HeartbeatEndpoint>() is not null;
+
+        return ehHeartbeat
+            ? RateLimitPartition.GetFixedWindowLimiter($"beat:{userId}", _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = RuleConstants.HeartbeatsPerMinute,
+                Window = TimeSpan.FromMinutes(1),
+            })
             : RateLimitPartition.GetFixedWindowLimiter(userId, _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 20,
+                PermitLimit = RuleConstants.AccountRequestsPerMinute,
                 Window = TimeSpan.FromMinutes(1),
             });
     });
@@ -233,6 +254,8 @@ app.UseRateLimiter();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapAuthEndpoints();
 app.MapMeEndpoints();
+app.MapSessionEndpoints();
+app.MapStatsEndpoints();
 
 app.Run();
 

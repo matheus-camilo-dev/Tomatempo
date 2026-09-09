@@ -70,4 +70,10 @@ public static class RuleConstants
 
     /// <summary>Teto por IP nos endpoints anônimos de autenticação.</summary>
     public const int AnonymousAuthAttemptsPerMinutePerIp = 60;
+
+    /// <summary>Heartbeat bate a cada 30s, então 60/min deixa folga para reenvio (§4).</summary>
+    public const int HeartbeatsPerMinute = 60;
+
+    /// <summary>Teto por conta em todo o resto (§4).</summary>
+    public const int AccountRequestsPerMinute = 20;
 }

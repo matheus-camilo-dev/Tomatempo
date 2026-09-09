@@ -1,10 +1,14 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Tomatempo.Api.Services;
 using Tomatempo.Api.Tests.Harness;
 using Tomatempo.Domain;
+using Tomatempo.Domain.Sessions;
+using Tomatempo.Domain.Time;
+using Tomatempo.Infrastructure;
+using Tomatempo.Infrastructure.Entities;
 
 namespace Tomatempo.Api.Tests;
 
@@ -40,6 +44,39 @@ public sealed class SessaoDeFocoTests(PostgresFixture postgres) : ApiFacts(postg
             Relogio.Advance(Passo);
             await client.PostAsync($"/api/sessions/{id}/beat", content: null);
         }
+    }
+
+    /// <summary>
+    /// Preenche o dia com sessões já apuradas, escrevendo no Postgres de verdade — não é
+    /// duplo, é o mesmo banco que a API usa. Serve a cenários cujo arranjo, feito pela API,
+    /// esbarraria em outra regra antes de chegar na que está sendo testada.
+    /// </summary>
+    private async Task SemearSessoesApuradasAsync(Conta conta, int quantas)
+    {
+        using var escopo = Api.Services.CreateScope();
+        var db = escopo.ServiceProvider.GetRequiredService<TomatempoDbContext>();
+
+        var user = await db.Users.FirstAsync(u => u.Email == conta.Email);
+        var hoje = LocalDay.Of(Relogio.GetUtcNow(), TimeZoneInfo.FindSystemTimeZoneById(user.TimeZone));
+
+        for (var i = 0; i < quantas; i++)
+        {
+            db.FocusSessions.Add(new FocusSessionRow
+            {
+                Id = Guid.CreateVersion7(),
+                UserId = user.Id,
+                StartedAtUtc = Relogio.GetUtcNow().AddHours(-6).AddMinutes(i * 10),
+                EndedAtUtc = Relogio.GetUtcNow().AddHours(-6).AddMinutes((i * 10) + 6),
+                LastHeartbeatAtUtc = Relogio.GetUtcNow().AddHours(-6).AddMinutes((i * 10) + 6),
+                Status = SessionStatus.Abandoned,
+                Source = SessionSource.Online,
+                CountedMinutes = 6,
+                RankingEligible = false,
+                LocalDate = hoje,
+            });
+        }
+
+        await db.SaveChangesAsync();
     }
 
     private static Task<HttpResponseMessage> EntrarComGoogleAsync(HttpClient client, string email)
@@ -412,13 +449,12 @@ public sealed class SessaoDeFocoTests(PostgresFixture postgres) : ApiFacts(postg
     {
         // Arrange — teto antifraude de 16 sessões apuradas por dia local (§3.2). O excedente é
         // registrado, mas com zero minuto.
+        //
+        // As 16 primeiras entram direto no banco, e não pela API: dezessete sessões pela API
+        // são trinta e quatro requisições fora heartbeat, e o teto de 20/min por conta (§4) —
+        // que é regra, não obstáculo de teste — responderia 429 antes do cenário terminar.
         var conta = await CadastrarAsync();
-        for (var i = 0; i < RuleConstants.MaxSessionsPerLocalDay; i++)
-        {
-            var cheia = await AbrirAsync(conta.Client);
-            await BaterAteAsync(conta.Client, cheia, TimeSpan.FromMinutes(6));
-            await conta.Client.PostAsync($"/api/sessions/{cheia}/abandon", content: null);
-        }
+        await SemearSessoesApuradasAsync(conta, RuleConstants.MaxSessionsPerLocalDay);
 
         // Act
         var excedente = await AbrirAsync(conta.Client);

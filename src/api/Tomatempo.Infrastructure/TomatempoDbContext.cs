@@ -20,6 +20,10 @@ public sealed class TomatempoDbContext(DbContextOptions<TomatempoDbContext> opti
 
     public DbSet<AccountTokenRow> AccountTokens => Set<AccountTokenRow>();
 
+    public DbSet<FocusSessionRow> FocusSessions => Set<FocusSessionRow>();
+
+    public DbSet<DailyStatsRow> DailyStats => Set<DailyStatsRow>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -81,6 +85,58 @@ public sealed class TomatempoDbContext(DbContextOptions<TomatempoDbContext> opti
             streak.Property(s => s.FreezeBalance).HasColumnName("freeze_balance");
             streak.Property(s => s.ConsecutiveGoalDays).HasColumnName("consecutive_goal_days");
             streak.HasOne<TomatempoUser>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<FocusSessionRow>(session =>
+        {
+            session.ToTable("focus_sessions");
+            session.HasKey(f => f.Id);
+            session.Property(f => f.Id).HasColumnName("id");
+            session.Property(f => f.UserId).HasColumnName("user_id");
+            session.Property(f => f.StartedAtUtc).HasColumnName("started_at_utc");
+            session.Property(f => f.EndedAtUtc).HasColumnName("ended_at_utc");
+            session.Property(f => f.LastHeartbeatAtUtc).HasColumnName("last_heartbeat_at_utc");
+            session.Property(f => f.Status).HasColumnName("status").HasConversion<string>();
+            session.Property(f => f.Source).HasColumnName("source").HasConversion<string>();
+            session.Property(f => f.CountedMinutes).HasColumnName("counted_minutes");
+            session.Property(f => f.RankingEligible).HasColumnName("ranking_eligible");
+            session.Property(f => f.LocalDate).HasColumnName("local_date");
+            session.Property(f => f.ClientSessionId).HasColumnName("client_session_id");
+
+            session.HasIndex(f => new { f.UserId, f.LocalDate });
+            session.HasIndex(f => f.StartedAtUtc);
+
+            // Índice parcial: a busca por "a sessão aberta desta pessoa" acontece a cada
+            // heartbeat, e o histórico inteiro não precisa entrar nele (§2).
+            session.HasIndex(f => f.UserId)
+                .HasDatabaseName("ix_focus_sessions_ativa_por_usuario")
+                .HasFilter("status = 'Active'");
+
+            // Idempotência do lote offline (§3.4): o mesmo id do cliente não entra duas vezes,
+            // e quem garante é o banco, não uma checagem que uma corrida pode furar.
+            session.HasIndex(f => new { f.UserId, f.ClientSessionId })
+                .IsUnique()
+                .HasFilter("client_session_id IS NOT NULL");
+
+            session.HasOne<TomatempoUser>().WithMany()
+                .HasForeignKey(f => f.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<DailyStatsRow>(day =>
+        {
+            day.ToTable("daily_stats");
+            day.HasKey(d => new { d.UserId, d.LocalDate });
+            day.Property(d => d.UserId).HasColumnName("user_id");
+            day.Property(d => d.LocalDate).HasColumnName("local_date");
+            day.Property(d => d.CompletedPomodoros).HasColumnName("completed_pomodoros");
+            day.Property(d => d.FocusMinutes).HasColumnName("focus_minutes");
+            day.Property(d => d.OnlineFocusMinutes).HasColumnName("online_focus_minutes");
+            day.Property(d => d.Goal).HasColumnName("goal");
+            day.Property(d => d.GoalMet).HasColumnName("goal_met");
+            day.Property(d => d.FreezeUsed).HasColumnName("freeze_used");
+            day.Property(d => d.ClosedAt).HasColumnName("closed_at");
+            day.HasOne<TomatempoUser>().WithMany()
+                .HasForeignKey(d => d.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<AccountTokenRow>(token =>

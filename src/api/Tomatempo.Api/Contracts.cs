@@ -69,3 +69,41 @@ public sealed record FreezeEntryView(int Delta, string Reason, DateOnly? RefDate
 public sealed record FreezeLedgerView(int Balance, IReadOnlyList<FreezeEntryView> Entries);
 
 public sealed record GoalChangeView(int Pomodoros, DateOnly EffectiveFrom);
+
+// --- Sessões de foco (§3.2, §3.3) ---------------------------------------------------------
+
+/// <summary>
+/// Único campo de entrada de `/sessions/start`. Não existe aqui `startedAt`, `duration` nem
+/// `countedMinutes`: tudo isso é carimbo do servidor, e o que o cliente mandar a mais é
+/// ignorado pela desserialização (§7.3.3).
+/// </summary>
+public sealed record StartSessionRequest(string? Kind);
+
+public sealed record StartedSessionView(
+    Guid SessionId,
+    DateTimeOffset StartedAt,
+    DateTimeOffset EndsAt,
+    DateTimeOffset ServerNow);
+
+public sealed record HeartbeatView(bool Ok, DateTimeOffset ServerNow, int RemainingSeconds);
+
+public sealed record CompletedSessionView(int CountedMinutes, int CompletedToday, int Goal, bool GoalMet);
+
+public sealed record AbandonedSessionView(int CountedMinutes, bool Discarded);
+
+public sealed record ActiveSessionView(
+    Guid SessionId,
+    DateTimeOffset StartedAt,
+    DateTimeOffset EndsAt,
+    DateTimeOffset ServerNow,
+    int RemainingSeconds);
+
+// --- Estatísticas (§4) --------------------------------------------------------------------
+
+public sealed record TodayView(
+    DateOnly LocalDate,
+    int CompletedPomodoros,
+    int FocusMinutes,
+    int RankingMinutes,
+    int Goal,
+    bool GoalMet);

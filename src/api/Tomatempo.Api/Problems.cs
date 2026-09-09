@@ -25,6 +25,17 @@ public static class Problems
     public const string InvalidToken = "invalid_token";
     public const string OnboardingRequired = "onboarding_required";
     public const string OnboardingAlreadyCompleted = "onboarding_already_completed";
+    public const string NotFound = "not_found";
+
+    /// <summary>Outra aba assumiu o timer; esta para de pontuar (§3.3).</summary>
+    public const string SessionSuperseded = "session_superseded";
+
+    /// <summary>O varredor encerrou a sessão por falta de heartbeat (§3.2).</summary>
+    public const string SessionExpired = "session_expired";
+
+    /// <summary>A sessão já foi encerrada por conclusão ou abandono.</summary>
+    public const string SessionClosed = "session_closed";
+
     public const string TooManyRequests = "too_many_requests";
     public const string UnsupportedMediaType = "unsupported_media_type";
     public const string InternalError = "internal_error";
@@ -38,6 +49,13 @@ public static class Problems
     public static IResult BadRequest(string code, string title) => Of(StatusCodes.Status400BadRequest, code, title);
 
     public static IResult Conflict(string code, string title) => Of(StatusCodes.Status409Conflict, code, title);
+
+    /// <summary>
+    /// Recurso que não é do dono da sessão responde igual a recurso inexistente: 404 que
+    /// revela a existência de um é um oráculo de enumeração (§7.2/A01).
+    /// </summary>
+    public static IResult NotFoundResult() =>
+        Of(StatusCodes.Status404NotFound, NotFound, "Não encontrado.");
 
     /// <summary>
     /// Versão para os pontos que não devolvem <see cref="IResult"/> — eventos do cookie e o

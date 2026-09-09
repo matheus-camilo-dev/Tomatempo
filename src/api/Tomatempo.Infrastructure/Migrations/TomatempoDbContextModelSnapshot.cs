@@ -192,6 +192,115 @@ namespace Tomatempo.Infrastructure.Migrations
                     b.ToTable("account_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("Tomatempo.Infrastructure.Entities.DailyStatsRow", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateOnly>("LocalDate")
+                        .HasColumnType("date")
+                        .HasColumnName("local_date");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<int>("CompletedPomodoros")
+                        .HasColumnType("integer")
+                        .HasColumnName("completed_pomodoros");
+
+                    b.Property<int>("FocusMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("focus_minutes");
+
+                    b.Property<bool>("FreezeUsed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("freeze_used");
+
+                    b.Property<int>("Goal")
+                        .HasColumnType("integer")
+                        .HasColumnName("goal");
+
+                    b.Property<bool>("GoalMet")
+                        .HasColumnType("boolean")
+                        .HasColumnName("goal_met");
+
+                    b.Property<int>("OnlineFocusMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("online_focus_minutes");
+
+                    b.HasKey("UserId", "LocalDate");
+
+                    b.ToTable("daily_stats", (string)null);
+                });
+
+            modelBuilder.Entity("Tomatempo.Infrastructure.Entities.FocusSessionRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ClientSessionId")
+                        .HasColumnType("text")
+                        .HasColumnName("client_session_id");
+
+                    b.Property<int>("CountedMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("counted_minutes");
+
+                    b.Property<DateTimeOffset?>("EndedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ended_at_utc");
+
+                    b.Property<DateTimeOffset?>("LastHeartbeatAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_heartbeat_at_utc");
+
+                    b.Property<DateOnly>("LocalDate")
+                        .HasColumnType("date")
+                        .HasColumnName("local_date");
+
+                    b.Property<bool>("RankingEligible")
+                        .HasColumnType("boolean")
+                        .HasColumnName("ranking_eligible");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("source");
+
+                    b.Property<DateTimeOffset>("StartedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at_utc");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StartedAtUtc");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_focus_sessions_ativa_por_usuario")
+                        .HasFilter("status = 'Active'");
+
+                    b.HasIndex("UserId", "ClientSessionId")
+                        .IsUnique()
+                        .HasFilter("client_session_id IS NOT NULL");
+
+                    b.HasIndex("UserId", "LocalDate");
+
+                    b.ToTable("focus_sessions", (string)null);
+                });
+
             modelBuilder.Entity("Tomatempo.Infrastructure.Entities.FreezeLedgerRow", b =>
                 {
                     b.Property<Guid>("Id")
@@ -452,6 +561,24 @@ namespace Tomatempo.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("Tomatempo.Infrastructure.Entities.AccountTokenRow", b =>
+                {
+                    b.HasOne("Tomatempo.Infrastructure.Entities.TomatempoUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Tomatempo.Infrastructure.Entities.DailyStatsRow", b =>
+                {
+                    b.HasOne("Tomatempo.Infrastructure.Entities.TomatempoUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Tomatempo.Infrastructure.Entities.FocusSessionRow", b =>
                 {
                     b.HasOne("Tomatempo.Infrastructure.Entities.TomatempoUser", null)
                         .WithMany()
