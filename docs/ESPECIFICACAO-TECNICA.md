@@ -492,7 +492,7 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [ ] Modo avião: 3 pomodoros contam para meta/streak ao reconectar e nenhum minuto vai para o ranking.
 - [ ] Reenviar o mesmo lote offline não duplica nada.
 - [x] Conta nova criada após uso anônimo começa zerada.
-- [ ] Suíte de domínio cobre virada de dia, horário de verão, offsets :30 e :45 e virada de ano.
+- [x] Suíte de domínio cobre virada de dia, horário de verão, offsets :30 e :45 e virada de ano.
 
 **Pronto quando — front da conta (a tela conversando com a API):**
 
