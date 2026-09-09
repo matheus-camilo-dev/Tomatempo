@@ -34,7 +34,13 @@ public sealed class FechamentoDiarioTests(PostgresFixture postgres) : ApiFacts(p
     }
 
     /// <summary>Escreve um dia já vivido: tantos pomodoros concluídos, com a meta que valia.</summary>
-    private static void SemearDia(TomatempoDbContext db, Guid userId, DateOnly dia, int pomodoros, int meta)
+    private static void SemearDia(
+        TomatempoDbContext db,
+        Guid userId,
+        DateOnly dia,
+        int pomodoros,
+        int meta,
+        DateTimeOffset? fechadoEm = null)
     {
         db.DailyStats.Add(new DailyStatsRow
         {
@@ -45,6 +51,7 @@ public sealed class FechamentoDiarioTests(PostgresFixture postgres) : ApiFacts(p
             OnlineFocusMinutes = pomodoros * 25,
             Goal = meta,
             GoalMet = pomodoros >= meta,
+            ClosedAt = fechadoEm,
         });
     }
 
@@ -123,6 +130,8 @@ public sealed class FechamentoDiarioTests(PostgresFixture postgres) : ApiFacts(p
         var streak = await db.UserStreaks.FirstAsync(s => s.UserId == user.Id);
         streak.FreezeBalance = 0;
         streak.CurrentStreak = 9;
+        // A mais longa é um máximo corrente: não existe conta com corrente 9 e mais longa 0.
+        streak.LongestStreak = 9;
 
         var hoje = LocalDay.Of(Relogio.GetUtcNow(), TimeZoneInfo.FindSystemTimeZoneById(user.TimeZone));
         SemearDia(db, user.Id, hoje, pomodoros: 0, meta: 4);
@@ -398,9 +407,7 @@ public sealed class FechamentoDiarioTests(PostgresFixture postgres) : ApiFacts(p
         using var _ = escopo;
 
         var hoje = LocalDay.Of(Relogio.GetUtcNow(), TimeZoneInfo.FindSystemTimeZoneById(user.TimeZone));
-        SemearDia(db, user.Id, hoje, pomodoros: 0, meta: 2);
-        var dia = await db.DailyStats.FirstAsync(d => d.UserId == user.Id && d.LocalDate == hoje);
-        dia.ClosedAt = Relogio.GetUtcNow();
+        SemearDia(db, user.Id, hoje, pomodoros: 0, meta: 2, fechadoEm: Relogio.GetUtcNow());
         await db.SaveChangesAsync();
 
         // Act — uma sessão inteira apurada no mesmo dia local, depois do selo.

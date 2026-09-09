@@ -38,14 +38,17 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AccountWorkflow>();
 builder.Services.AddScoped<SessionWorkflow>();
 builder.Services.AddScoped<SessionScavenger>();
+builder.Services.AddScoped<DailyCloser>();
 builder.Services.AddScoped<IExternalIdentityReader, CookieExternalIdentityReader>();
 
-// O varredor não sobe no ambiente de teste: uma varredura acordando sozinha encerraria a
-// sessão que o cenário acabou de abrir, e a suíte deixaria de ser determinística. Os testes
-// chamam `SweepAsync` no instante que escolhem.
+// Os dois jobs não sobem no ambiente de teste: uma varredura acordando sozinha encerraria a
+// sessão que o cenário acabou de abrir, e um fechamento acordando sozinho selaria o dia que o
+// cenário está montando. Os testes chamam `SweepAsync` e `CloseDueAsync` no instante que
+// escolhem.
 if (!builder.Environment.IsEnvironment("Testing"))
 {
     builder.Services.AddHostedService<SessionScavengerService>();
+    builder.Services.AddHostedService<DailyCloserService>();
 }
 
 builder.Services.AddSingleton<LoginThrottle>();

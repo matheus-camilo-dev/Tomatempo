@@ -485,10 +485,10 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [x] Fechar a aba no minuto 20 credita exatamente 20 minutos; fechar no minuto 3 credita 0.
 - [ ] Abrir o timer em duas abas: a segunda assume, a primeira avisa e para de pontuar.
 - [x] Manipular o relógio do sistema não altera minuto algum.
-- [ ] Baixar a meta às 23h não salva a streak do dia; a nova meta aparece só amanhã.
-- [ ] Dia sem meta batida consome 1 freeze e mantém a streak; sem freeze, zera.
-- [ ] 7 dias consecutivos de meta batida creditam +1 freeze; dia coberto por freeze reseta o contador do marco.
-- [ ] Teto de 5 respeitado, com `CapOverflow` registrado.
+- [x] Baixar a meta às 23h não salva a streak do dia; a nova meta aparece só amanhã.
+- [x] Dia sem meta batida consome 1 freeze e mantém a streak; sem freeze, zera.
+- [x] 7 dias consecutivos de meta batida creditam +1 freeze; dia coberto por freeze reseta o contador do marco.
+- [x] Teto de 5 respeitado, com `CapOverflow` registrado.
 - [ ] Modo avião: 3 pomodoros contam para meta/streak ao reconectar e nenhum minuto vai para o ranking.
 - [ ] Reenviar o mesmo lote offline não duplica nada.
 - [x] Conta nova criada após uso anônimo começa zerada.
