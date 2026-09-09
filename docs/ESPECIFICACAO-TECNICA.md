@@ -230,6 +230,10 @@ lote ao reconectar. O servidor aceita a sessão se, e somente se:
 4. o dia local resultante não excede 16 sessões;
 5. `clientSessionId` é inédito (idempotência — reenvio é no-op).
 
+O lote traz no máximo **100 itens**. Não é regra de produto: 48h de uso cabem folgado em 100 sessões, e o teto
+existe para que um lote inventado não vire trabalho ilimitado no servidor (§7.2/A04). Lote maior é recusado
+inteiro, com `invalid_request`.
+
 Aceitas com `source = Offline` e `ranking_eligible = false`. Contam para meta e streak. As rejeitadas retornam
 motivo por item, e o cliente descarta sem retry.
 
@@ -490,6 +494,7 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [x] 7 dias consecutivos de meta batida creditam +1 freeze; dia coberto por freeze reseta o contador do marco.
 - [x] Teto de 5 respeitado, com `CapOverflow` registrado.
 - [ ] Modo avião: 3 pomodoros contam para meta/streak ao reconectar e nenhum minuto vai para o ranking.
+- [ ] Lote acima de 100 itens é recusado inteiro, com `invalid_request`.
 - [ ] Reenviar o mesmo lote offline não duplica nada.
 - [x] Conta nova criada após uso anônimo começa zerada.
 - [x] Suíte de domínio cobre virada de dia, horário de verão, offsets :30 e :45 e virada de ano.
