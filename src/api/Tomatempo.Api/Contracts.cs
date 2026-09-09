@@ -50,6 +50,8 @@ public sealed record FreezesView(int Balance);
 public sealed record MeView(
     string? Email,
     bool EmailConfirmed,
+    // Booleano derivado: diz se a exclusão pede senha, nunca o hash nem parte dela (§3.10).
+    bool HasPassword,
     string? Nickname,
     bool OnboardingRequired,
     string TimeZone,

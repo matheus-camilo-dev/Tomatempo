@@ -146,6 +146,9 @@ public sealed class AccountWorkflow(TomatempoDbContext db, TimeProvider clock)
         return new MeView(
             user.Email,
             user.EmailConfirmed,
+            // Conta criada pelo Google nasce sem senha; a tela de exclusão precisa
+            // saber disso para não pedir uma que não existe (§3.10).
+            user.PasswordHash is not null,
             user.Nickname,
             user.OnboardingCompletedAt is null,
             user.TimeZone,

@@ -4,7 +4,15 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { defineConfig } from 'vitest/config'
 import { manifest } from './src/pwa/manifest.ts'
 
+// A API roda em outra porta em desenvolvimento; o proxy a traz para a mesma
+// origem do SPA. É o que mantém o cookie `SameSite=Lax` funcionando sem CORS,
+// igual ao nginx da produção (§1.1).
+const API_TARGET = process.env.VITE_API_URL ?? 'http://localhost:8080'
+
 export default defineConfig({
+  server: {
+    proxy: { '/api': { target: API_TARGET, changeOrigin: false } },
+  },
   plugins: [
     react(),
     tailwindcss(),
@@ -28,6 +36,10 @@ export default defineConfig({
   ],
   test: {
     environment: 'jsdom',
+    // Os 5s padrão não cobrem um formulário de conta digitado tecla a tecla com
+    // a instrumentação de cobertura ligada — o teste passa sem ela e estoura
+    // com ela, que é defeito de configuração do runner, não do cenário.
+    testTimeout: 20_000,
     // e2e é do Playwright, que tem runner próprio.
     exclude: ['node_modules/**', 'e2e/**', 'dist/**'],
     setupFiles: ['./src/test/setup.ts'],

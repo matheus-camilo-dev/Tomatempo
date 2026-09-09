@@ -18,7 +18,9 @@ describe('onboarding', () => {
     const { router } = renderRoute({ path: '/conta' })
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/onboarding'))
-    expect(screen.getByRole('heading', { name: pt.account.onboardingTitle })).toBeInTheDocument()
+    // `findBy` e não `getBy`: o roteador troca a rota antes do React repintar,
+    // então logo depois do `waitFor` a tela ainda está vazia por um instante.
+    expect(await screen.findByRole('heading', { name: pt.account.onboardingTitle })).toBeInTheDocument()
   })
 
   it('deve propor o fuso do navegador e deixar trocar antes de confirmar', async () => {

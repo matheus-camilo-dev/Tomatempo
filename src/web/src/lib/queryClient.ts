@@ -1,0 +1,39 @@
+import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query'
+import { ApiError } from './api'
+import { forgetSession } from './sessionHint'
+
+export const ME_QUERY_KEY = ['me'] as const
+export const FREEZES_QUERY_KEY = ['me', 'freezes'] as const
+
+/**
+ * Um cliente por app — e um por teste, para que o cache de um caso não vire a
+ * conta carregada do caso seguinte.
+ *
+ * A sessão local cai no `unauthenticated`, e não no 401: `DELETE /me` com senha
+ * errada também responde 401, com `invalid_credentials`, e errar a senha não
+ * pode deslogar ninguém (§5).
+ */
+export function createQueryClient(): QueryClient {
+  const client: QueryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        // Erro da API é resposta, não falha de rede a insistir: repetir só
+        // multiplicaria 401 e 429.
+        retry: false,
+        refetchOnWindowFocus: false,
+      },
+      mutations: { retry: false },
+    },
+    queryCache: new QueryCache({ onError: (erro) => derrubarSessao(client, erro) }),
+    mutationCache: new MutationCache({ onError: (erro) => derrubarSessao(client, erro) }),
+  })
+
+  return client
+}
+
+function derrubarSessao(client: QueryClient, erro: unknown): void {
+  if (!(erro instanceof ApiError) || erro.code !== 'unauthenticated') return
+
+  forgetSession()
+  client.setQueryData(ME_QUERY_KEY, null)
+}

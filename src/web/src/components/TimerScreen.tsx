@@ -40,9 +40,18 @@ export interface TimerScreenProps {
   /** Injetados nos testes; em produção usam as implementações padrão. */
   readonly store?: TimerStore
   readonly alerts?: AlertPorts
+  /**
+   * Desligado por quem já está dentro de uma rota: ali o CTA vira link do
+   * roteador, e quem não tem conta continua vendo o mesmo texto.
+   */
+  readonly signupCta?: boolean
 }
 
-export function TimerScreen({ store = timerStore, alerts = browserAlerts }: TimerScreenProps) {
+export function TimerScreen({
+  store = timerStore,
+  alerts = browserAlerts,
+  signupCta = true,
+}: TimerScreenProps) {
   const { t, i18n } = useTranslation()
   const { preference, setPreference } = useTheme()
   const online = useOnlineStatus()
@@ -144,12 +153,14 @@ export function TimerScreen({ store = timerStore, alerts = browserAlerts }: Time
         })}
       </p>
 
-      <p
-        data-testid="signup-cta"
-        className="max-w-xs text-sm leading-relaxed text-slate-500 dark:text-slate-400"
-      >
-        {t('cta')}
-      </p>
+      {signupCta && (
+        <p
+          data-testid="signup-cta"
+          className="max-w-xs text-sm leading-relaxed text-slate-500 dark:text-slate-400"
+        >
+          {t('cta')}
+        </p>
+      )}
 
       <div
         role="group"
