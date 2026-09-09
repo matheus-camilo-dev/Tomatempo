@@ -1,8 +1,8 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
-import { afterEach } from 'vitest'
-import { DEFAULT_LANGUAGE, LANGUAGE_STORAGE_KEY, initGlobalI18n } from '../i18n'
-import { THEME_STORAGE_KEY } from '../lib/theme'
+import { afterAll, afterEach, beforeAll } from 'vitest'
+import { DEFAULT_LANGUAGE, initGlobalI18n } from '../i18n'
+import { server } from './server'
 
 // A instância global precisa existir antes do primeiro render: `useTranslation`
 // sem provider recorre a ela, e sem inicialização a tela mostraria as chaves.
@@ -23,13 +23,20 @@ if (!globalThis.matchMedia) {
   })) as typeof globalThis.matchMedia
 }
 
+// `error` e não `bypass`: requisição que nenhum teste declarou é chamada à API
+// que ninguém esperava — e é exatamente isso que a fase 2 precisa flagrar.
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+afterAll(() => server.close())
+
 afterEach(async () => {
   cleanup()
-  // Idioma é estado global: sem restaurar, um teste que troca para inglês
-  // contamina os seguintes.
-  localStorage.removeItem(LANGUAGE_STORAGE_KEY)
-  // Tema também é estado global — some no elemento raiz e no armazenamento.
-  localStorage.removeItem(THEME_STORAGE_KEY)
+  server.resetHandlers()
+  // Tudo que o app guarda é estado global: idioma, tema e a pista de sessão.
+  // Sem limpar, o teste que troca para inglês, escurece a tela ou faz login
+  // contamina os seguintes. Limpar por prefixo cobre o que ainda vier.
+  for (const chave of Object.keys(localStorage)) {
+    if (chave.startsWith('tomatempo:')) localStorage.removeItem(chave)
+  }
   document.documentElement.classList.remove('dark')
   if (i18n.language !== DEFAULT_LANGUAGE) await i18n.changeLanguage(DEFAULT_LANGUAGE)
 })
