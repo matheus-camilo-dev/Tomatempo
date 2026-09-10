@@ -225,6 +225,56 @@ describe('o dia da conta', () => {
   })
 })
 
+describe('servidor fora do ar', () => {
+  // O timer é offline-first desde a fase 1: a conversa com o servidor é o que
+  // rende minuto de ranking, não o que autoriza o ciclo a começar (§3.4).
+  it('deve começar o ciclo pelo relógio local, quando a sessão não abre', async () => {
+    logado({ completedPomodoros: 0, focusMinutes: 0 })
+    server.use(http.post('/api/sessions/start', () => HttpResponse.error()))
+
+    montar()
+    await assentar()
+
+    iniciar()
+    await assentar()
+
+    expect(screen.getByRole('timer')).toHaveTextContent('25:00')
+
+    await avancar(5 * MINUTE)
+    expect(screen.getByRole('timer')).toHaveTextContent('20:00')
+    expect(screen.getByRole('button', { name: pt.action.abandon })).toBeInTheDocument()
+  })
+
+  it('deve encerrar o ciclo, quando o fechamento da sessão não vai', async () => {
+    logado({ completedPomodoros: 0, focusMinutes: 0 })
+    server.use(
+      http.post('/api/sessions/start', () =>
+        HttpResponse.json({
+          sessionId: SESSAO,
+          startedAt: SERVIDOR_AGORA,
+          endsAt: '2026-09-03T12:25:00.000Z',
+          serverNow: SERVIDOR_AGORA,
+        }),
+      ),
+      http.post(`/api/sessions/${SESSAO}/abandon`, () => HttpResponse.error()),
+    )
+
+    montar()
+    await assentar()
+
+    iniciar()
+    await assentar()
+    await avancar(10 * MINUTE)
+    abandonar()
+    await assentar()
+
+    // De volta ao início, pronto para o próximo — e não travado no ciclo que
+    // o servidor não confirmou.
+    expect(screen.getByRole('button', { name: pt.action.startFocus })).toBeInTheDocument()
+    expect(screen.getByRole('timer')).toHaveTextContent('25:00')
+  })
+})
+
 describe('fim do ciclo', () => {
   it('deve chamar complete e mostrar o dia que a API devolveu', async () => {
     logado({ completedPomodoros: 0, focusMinutes: 0 })

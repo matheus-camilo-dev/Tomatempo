@@ -537,6 +537,8 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
       antes dos 5 minutos.
 - [ ] `session_expired` no heartbeat encerra o ciclo na tela com mensagem traduzida, sem quebrar.
 - [ ] Recarregar no meio do foco recupera a sessão por `GET /sessions/active` e volta com o tempo certo.
+- [ ] Falha na conversa com o servidor não derruba o ciclo: não conseguindo abrir nem fechar a sessão, o
+      timer começa e encerra pelo relógio local, como o do anônimo.
 - [ ] Falha de rede num heartbeat não derruba o ciclo: a tela continua contando e o batimento seguinte reata.
 - [ ] O dia de quem está logado vem de `GET /stats/today` — pomodoros, minutos e meta —, e o histórico local
       nunca é somado a ele.
