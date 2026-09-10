@@ -159,6 +159,21 @@ Site web de Pomodoro utilizável **anonimamente**, com **login opcional** que de
   exatamente o dano que "conta nova começa zerada" existe para impedir. Custo assumido: quem sai offline com
   ciclos pendentes perde esses minutos; é o lado barato do erro.
 
+### 10/09/2026 — recuperar o ciclo ao voltar para a tela
+
+- **Abrir a tela com um foco em andamento retoma o ciclo**, com o tempo que o servidor diz — mesmo que o
+  navegador não tenha mais nada guardado, e mesmo em outro dispositivo. *Por quê*: enquanto o servidor
+  considera a pessoa em foco, ela precisa ver o mesmo. Sem isso, quem perdeu o estado local fica olhando um
+  timer parado e perde os minutos de um ciclo que, para o servidor, estava correndo.
+- **Ler a sessão não a toma de ninguém.** *Por quê*: quem assume o foco de outra aba é começar um ciclo, não
+  abrir a tela. Se abrir bastasse, uma segunda aba aberta por engano derrubaria a sessão de quem está
+  trabalhando.
+- **Servidor sem sessão ativa não interrompe o ciclo que está na tela**: ele passa a valer como ciclo cumprido
+  sem servidor e vai para a fila. *Por quê*: "não há sessão" tanto pode ser sessão já apurada quanto ciclo que
+  nasceu offline, e não dá para distinguir os dois pelo navegador. Mandar para a fila acerta nos dois: a
+  sessão já apurada faz o item ser recusado por sobreposição, e o ciclo que nasceu offline é creditado. O
+  aviso de sessão perdida fica reservado para quando o servidor afirma que a sessão saiu desta aba.
+
 ### 10/09/2026 — a fila offline no navegador
 
 - **A sessão que cai sozinha descarta a fila, igual ao logout.** *Por quê*: o motivo do descarte nunca foi o

@@ -213,6 +213,20 @@ POST /sessions/{id}/complete  (ou /abandon)
 - **Teto diário**: no máximo 16 sessões apuradas por dia local (online + offline). O excedente é registrado com
   `counted_minutes = 0`.
 
+**Recuperação ao abrir a tela.** Havendo pista de sessão, o cliente pergunta `GET /sessions/active` antes de
+qualquer outra coisa, e o que vier decide o ciclo:
+
+- **200** — a tela assume a sessão: id, para o batimento e o fechamento reatarem, e a janela carimbada pelo
+  servidor, trazida para o relógio local pelo mesmo desconto do `start` (§3.2). Vale inclusive com o timer
+  local parado: é o caso de quem perdeu o armazenamento do navegador ou abriu o app em outro dispositivo com o
+  foco correndo. Ler a sessão **não** a assume de outra aba — quem faz isso é o `start` (§3.3).
+- **204 ou sem resposta** — o ciclo local que estiver correndo passa a ser tratado como ciclo sem servidor
+  (§3.4): continua contando e vai para a fila no fim. O 204 é ambíguo por natureza — pode ser sessão já apurada
+  pelo varredor ou ciclo que nasceu offline e nunca teve uma —, e este é o desfecho certo nos dois casos: a
+  sessão já apurada faz o item ser recusado por sobreposição, e o ciclo que nasceu offline é creditado. Nenhum
+  aviso de sessão perdida aparece aqui; esse é o desfecho do `409` no batimento, em que o servidor afirma que a
+  sessão saiu desta aba.
+
 ### 3.3 Sessão única
 
 `start` com uma sessão `Active` existente: a antiga é encerrada como `Superseded` (o parcial dela é apurado
@@ -558,6 +572,12 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
       antes dos 5 minutos.
 - [x] `session_expired` no heartbeat encerra o ciclo na tela com mensagem traduzida, sem quebrar.
 - [ ] Recarregar no meio do foco recupera a sessão por `GET /sessions/active` e volta com o tempo certo.
+- [ ] A sessão recuperada volta a bater e é ela que o fim do ciclo fecha.
+- [ ] Sessão ativa no servidor com o timer local parado retoma o ciclo na tela, com o tempo que o servidor diz.
+- [ ] Visitante anônimo não pergunta por sessão ativa alguma ao abrir a tela.
+- [ ] `204` no meio de um ciclo local não mostra aviso de sessão perdida e não interrompe a contagem.
+- [ ] Ciclo que atravessa um recarregamento sem resposta do servidor termina na fila offline.
+- [ ] Recuperar a sessão não a toma de outra aba: ler não é `start`.
 - [x] Falha na conversa com o servidor não derruba o ciclo: não conseguindo abrir nem fechar a sessão, o
       timer começa e encerra pelo relógio local, como o do anônimo.
 - [x] Falha de rede num heartbeat não derruba o ciclo: a tela continua contando e o batimento seguinte reata.
