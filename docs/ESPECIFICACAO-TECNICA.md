@@ -221,10 +221,13 @@ assumida em outro dispositivo".
 
 ### 3.4 Offline
 
-O cliente enfileira em IndexedDB `{clientSessionId, startedAtLocal, offsetMinutes, durationSeconds}` e envia em
-lote ao reconectar. A fila só recolhe ciclo de quem está logado — o do anônimo não migra (§3.10) — e é
-**descartada no logout**: nenhum identificador de usuário pode ser guardado no navegador (§7.2/A01), então a
-fila não sabe de quem é, e sobreviver ao logout significaria drenar na próxima conta que entrasse ali. O servidor aceita a sessão se, e somente se:
+O cliente enfileira em IndexedDB `{clientSessionId, startedAt, durationSeconds}` e envia em
+lote ao reconectar. `startedAt` é o instante absoluto do início — quem resolve o dia local é o servidor, pelo
+fuso da conta, e não o offset que o navegador declarasse. A fila só recolhe ciclo de quem está logado — o do
+anônimo não migra (§3.10) — e é **descartada no logout**: nenhum identificador de usuário pode ser guardado no
+navegador (§7.2/A01), então a fila não sabe de quem é, e sobreviver ao logout significaria drenar na próxima
+conta que entrasse ali. **Queda de sessão vale como logout** para esse fim: o 401 `unauthenticated` que apaga a
+pista de sessão apaga a fila junto, porque deixa o navegador no mesmo estado. O servidor aceita a sessão se, e somente se:
 
 1. `startedAt` está dentro das últimas **48h** e não no futuro (tolerância de 2min);
 2. `duration` está entre 5 e 25min;
@@ -238,6 +241,22 @@ inteiro, com `invalid_request`.
 
 Aceitas com `source = Offline` e `ranking_eligible = false`. Contam para meta e streak. As rejeitadas retornam
 motivo por item, e o cliente descarta sem retry.
+
+**O lado do cliente.** Entra na fila o ciclo de foco que **encerrou sem sessão no servidor** — o `start` não
+foi (rede fora, servidor fora) e portanto não há o que fechar. Ciclo que abriu sessão e não conseguiu fechá-la
+não entra: quem o encerra é o varredor (§3.2), e enfileirá-lo o contaria duas vezes. O pomodoro inteiro entra
+com 25min; o abandonado entra com o parcial já truncado pela regra dos 5 minutos (§3.1) — abaixo disso não
+entra, porque o servidor o recusaria de qualquer forma.
+
+A drenagem dispara ao reconectar e também na abertura do app, quando há pista de sessão e a fila não está
+vazia — um ciclo cumprido com a aba fechada offline não pode ficar esperando um evento `online` que talvez
+nunca ocorra. A fila sobe em lotes de no máximo `MaxOfflineBatchItems`, e **o item só sai da fila depois da
+resposta**: aceito ou recusado, ele sai; sem resposta, permanece para a próxima tentativa. Duas drenagens
+concorrentes compartilham a mesma ida — e, ainda que se cruzassem, o `clientSessionId` já torna o reenvio um
+no-op no servidor.
+
+Navegador sem IndexedDB — navegação privada com armazenamento bloqueado — não recolhe nada e **não afeta o
+ciclo**: o timer nunca dependeu de conta nem de rede, e não passa a depender de banco no navegador.
 
 ### 3.5 Meta diária
 
@@ -549,6 +568,14 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [ ] Item sai da fila só depois da resposta; recusado é descartado sem retry, aceito nunca é reenviado.
 - [ ] Drenar duas vezes a mesma fila credita uma vez só.
 - [ ] Sair da conta descarta a fila offline junto com o resto do estado local.
+- [ ] Sessão derrubada pelo 401 `unauthenticated` descarta a fila, igual ao logout.
+- [ ] Ciclo do anônimo não entra na fila, mesmo offline.
+- [ ] Ciclo que abriu sessão no servidor não entra na fila, nem quando o fechamento não vai.
+- [ ] Abandono offline entra com o parcial truncado; abaixo de 5 minutos não entra.
+- [ ] Fila com mais itens que o teto do lote sobe em lotes sucessivos, nenhum acima do teto.
+- [ ] Drenagem sem resposta do servidor mantém a fila inteira para a próxima tentativa.
+- [ ] App aberto online com fila pendente drena sem esperar evento de reconexão.
+- [ ] Navegador sem IndexedDB não derruba o ciclo: a fila não recolhe e o timer segue contando.
 
 ### Fase 3 — Ranking, perfil e conquistas
 

@@ -90,7 +90,8 @@ Site web de Pomodoro utilizável **anonimamente**, com **login opcional** que de
 - **O que foi feito offline fica numa fila no navegador** e sobe para a conta quando a conexão volta. A fila só
   recolhe ciclo de quem está logado: o que o anônimo faz continua sendo dele e não migra.
 - **Sair da conta descarta o que ainda estiver na fila.** Quem sai offline com ciclos pendentes perde esses
-  minutos.
+  minutos. **A sessão que cai sozinha** — cookie expirado ou revogado — vale como saída: a fila é descartada
+  do mesmo jeito.
 
 ## 9. Antifraude (resumo)
 
@@ -100,7 +101,7 @@ Site web de Pomodoro utilizável **anonimamente**, com **login opcional** que de
 4. Meta só muda para o dia seguinte.
 5. Conta nova começa zerada.
 6. Offline não pontua no ranking.
-7. Fila offline descartada no logout (não atravessa de uma conta para outra).
+7. Fila offline descartada no logout e na queda de sessão (não atravessa de uma conta para outra).
 
 ## 10. Log de decisões
 
@@ -157,6 +158,22 @@ Site web de Pomodoro utilizável **anonimamente**, com **login opcional** que de
   drenaria na próxima conta que entrasse naquele navegador — creditar o foco de uma pessoa na conta de outra,
   exatamente o dano que "conta nova começa zerada" existe para impedir. Custo assumido: quem sai offline com
   ciclos pendentes perde esses minutos; é o lado barato do erro.
+
+### 10/09/2026 — a fila offline no navegador
+
+- **A sessão que cai sozinha descarta a fila, igual ao logout.** *Por quê*: o motivo do descarte nunca foi o
+  clique em "sair", e sim a fila não saber de quem ela é. Cookie expirado ou revogado deixa o navegador
+  exatamente no mesmo estado do logout, e a próxima conta a entrar ali receberia o foco de outra pessoa. Custo
+  assumido: a fila pendente no instante em que a sessão vence se perde — janela pequena, porque com a conexão
+  de pé ela já teria drenado.
+- **Ciclo cumprido sem sessão no servidor é o que entra na fila**, seja o pomodoro inteiro ou o parcial de quem
+  abandonou. *Por quê*: a fila existe para o que o servidor não viu acontecer. Ciclo que abriu sessão e não
+  conseguiu fechá-la não entra — quem o encerra é o varredor, e enfileirá-lo também o contaria duas vezes.
+- **Parcial abaixo de 5 minutos não entra na fila.** *Por quê*: é a mesma regra do parcial mínimo já valendo
+  antes de a rede voltar; enfileirar para o servidor recusar depois só gasta viagem.
+- **Navegador sem armazenamento para a fila não impede ninguém de usar o timer.** *Por quê*: o ciclo nunca
+  dependeu de conta nem de rede, e não vai passar a depender de banco no navegador. Quem está em navegação
+  privada com o armazenamento bloqueado perde os minutos offline, não o pomodoro.
 
 ## Pendências
 

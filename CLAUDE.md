@@ -35,7 +35,7 @@ Web pomodoro timer. Anonymous use OK; login unlocks: theme presets, daily goal, 
 
 - Installable; browser notifications; end-of-cycle sound.
 - Offline: banner warning; timer keeps working; offline pomodoros count toward goal+streak but NOT ranking (ranking minutes require online, server-validated start/end).
-- Offline queue (IndexedDB) collects only while logged in and is DISCARDED on logout — no user id may live in the browser, so a surviving queue would drain into the next account.
+- Offline queue (IndexedDB) collects only while logged in and is DISCARDED on logout — and on a dropped session (401 `unauthenticated`), which leaves the browser in the same state. No user id may live in the browser, so a surviving queue would drain into the next account.
 - Logged-in day (pomodoros/minutes/goal) always comes from the server; the local history stays the anonymous one and is never added to it.
 
 ## Anti-cheat summary
