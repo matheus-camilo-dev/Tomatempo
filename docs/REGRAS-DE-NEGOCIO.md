@@ -4,7 +4,7 @@
 
 ## Visão geral
 
-Site web de Pomodoro utilizável **anonimamente**, com **login opcional** que desbloqueia: galeria de temas de cores, meta diária, sequência de dias (streak) com congelamentos e ranking global semanal.
+Site web de Pomodoro utilizável **anonimamente**, com **login opcional** que desbloqueia: meta diária, sequência de dias (streak) com congelamentos, ranking global semanal e estatísticas pessoais.
 
 ## 1. Timer
 
@@ -19,7 +19,6 @@ Site web de Pomodoro utilizável **anonimamente**, com **login opcional** que de
 |---|---|---|
 | Timer completo | ✔ | ✔ |
 | Tema claro/escuro | ✔ | ✔ |
-| Galeria de temas (presets) | — | ✔ |
 | Meta diária | — | ✔ |
 | Streak + congelamentos | — | ✔ |
 | Ranking semanal | — | ✔ |
@@ -74,8 +73,8 @@ Site web de Pomodoro utilizável **anonimamente**, com **login opcional** que de
 
 ## 6. Temas de cores
 
-- Todos os usuários: claro/escuro.
-- Logados: galeria de **temas prontos (presets)** mantidos pelo produto — sem editor livre de cores.
+- Claro, escuro e "seguir o sistema", para todos — sem editor livre de cores e sem galeria de temas.
+- Para quem tem conta, a escolha acompanha a conta, junto com idioma e fuso, e não só o navegador.
 
 ## 7. Estatísticas pessoais (logados)
 
@@ -158,6 +157,16 @@ Site web de Pomodoro utilizável **anonimamente**, com **login opcional** que de
   drenaria na próxima conta que entrasse naquele navegador — creditar o foco de uma pessoa na conta de outra,
   exatamente o dano que "conta nova começa zerada" existe para impedir. Custo assumido: quem sai offline com
   ciclos pendentes perde esses minutos; é o lado barato do erro.
+
+### 10/09/2026 — escopo: temas e estatísticas
+
+- **A galeria de temas sai do produto.** Claro, escuro e "seguir o sistema" continuam, para todo mundo.
+  *Por quê*: era a única funcionalidade paga em complexidade — catálogo versionado, contraste AA por preset,
+  campo próprio no banco — sem ligação alguma com o que o produto faz. Nada do que já está no ar depende dela.
+  A coluna `theme_preset_id` fica no banco, reservada e sem uso, para não custar uma migração agora.
+- **Estatísticas pessoais vão para a fase 3.** *Por quê*: a série histórica nasce junto do perfil público e do
+  acúmulo semanal, que leem os mesmos dados; construir as duas coisas juntas evita fazer a mesma consulta duas
+  vezes. O dia corrente, que o timer precisa, já está entregue.
 
 ### 10/09/2026 — recuperar o ciclo ao voltar para a tela
 

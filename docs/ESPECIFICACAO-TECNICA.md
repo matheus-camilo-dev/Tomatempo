@@ -113,7 +113,7 @@ momento do registro — nunca recalculado a partir de UTC depois.
 | `time_zone` | text | IANA (ex.: `America/Sao_Paulo`) |
 | `locale` | text | `pt-BR` \| `en` |
 | `color_mode` | text | `light` \| `dark` \| `system` |
-| `theme_preset_id` | text | catálogo estático; `null` = padrão |
+| `theme_preset_id` | text | **reservada e sem uso** — a galeria de temas saiu do escopo (REGRAS §6); nunca escrita |
 | `ranking_opt_out` | bool | default `false` |
 | `nickname_changed_at` | timestamptz? | trava de 30 dias para a próxima troca (§11.8) |
 | `onboarding_completed_at` | timestamptz? | `null` = apelido/meta/fuso ainda não escolhidos; conta não pontua |
@@ -176,7 +176,7 @@ Atualizada incrementalmente a cada sessão apurada e **selada** pelo job de fech
 
 ### Catálogos estáticos (em código, versionados)
 
-Temas preset, avatares e definições de conquistas. Nada disso é editável por usuário.
+Avatares e definições de conquistas. Nada disso é editável por usuário.
 
 ---
 
@@ -409,7 +409,7 @@ POST   /auth/resend-confirmation → 202 sempre, com ou sem conta naquele e-mail
 POST   /auth/forgot-password     {email}
 POST   /auth/reset-password      {token, password}
 GET    /me                       → perfil, onboardingRequired, hasPassword, meta vigente e futura, streak, freezes, preferências
-PATCH  /me                       {nickname?, avatarId?, timeZone?, locale?, colorMode?, themePresetId?, rankingOptOut?}
+PATCH  /me                       {nickname?, avatarId?, timeZone?, locale?, colorMode?, rankingOptOut?}
 PUT    /me/goal                  {pomodoros} → responde effectiveFrom (sempre amanhã)
 GET    /me/freezes               → saldo + ledger explicado (a origem de cada crédito)
 DELETE /me                       → exclusão de conta
@@ -490,7 +490,7 @@ Três pontos continuam dependendo de verificação manual, e não são cobertos 
 
 Escopo: Identity + Google, confirmação de e-mail, onboarding com meta, sessões validadas no servidor
 (start/beat/complete/abandon + varredor), sessão única, sincronização offline, meta com efeito no dia seguinte,
-fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e galeria de temas.
+fechamento diário, streak, congelamentos com ledger e tela de preferências da conta (idioma, tema e fuso).
 
 **Pronto quando:**
 
@@ -611,7 +611,7 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 ### Fase 3 — Ranking, perfil e conquistas
 
 Escopo: acúmulo semanal, view materializada, tela de ranking com posição própria, fechamento semanal com
-premiação, perfil público, conquistas e opt-out total.
+premiação, perfil público, conquistas, estatísticas pessoais (`GET /stats/history`) e opt-out total.
 
 **Pronto quando:**
 
@@ -946,7 +946,7 @@ alguém (inclusive eu, meses depois) de reverter uma proteção antifraude achan
 
 - **Segurança e privacidade**: detalhadas na §7 (controles OWASP, checklist por mudança, segredos, dados pessoais).
 - **Performance**: bundle inicial < 200KB gzip; TTI < 2s em 4G.
-- **Acessibilidade**: navegação por teclado completa, `aria-live` no contador, contraste AA em todos os presets,
+- **Acessibilidade**: navegação por teclado completa, `aria-live` no contador, contraste AA nos temas claro e escuro,
   respeito a `prefers-reduced-motion`.
 - **Observabilidade**: log estruturado, `/health` e `/health/ready`, métricas de sessões ativas e de execução dos jobs.
 - **CI** (GitHub Actions): build e testes das duas pontas, lint/format (`dotnet format`, ESLint, Prettier),

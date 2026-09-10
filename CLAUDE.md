@@ -1,6 +1,6 @@
 # Tomatempo — Product Spec (AI context)
 
-Web pomodoro timer. Anonymous use OK; login unlocks: theme presets, daily goal, streak+freezes, weekly global ranking, personal stats. Phase 1 (anonymous timer, PWA, i18n, themes) is delivered; this file is the product source of truth (business rules mirror docs/REGRAS-DE-NEGOCIO.md, PO-facing, pt-BR). Engineering spec — stack, data model, API, delivery phases: docs/ESPECIFICACAO-TECNICA.md.
+Web pomodoro timer. Anonymous use OK; login unlocks: daily goal, streak+freezes, weekly global ranking, personal stats. Phase 1 (anonymous timer, PWA, i18n, themes) is delivered; this file is the product source of truth (business rules mirror docs/REGRAS-DE-NEGOCIO.md, PO-facing, pt-BR). Engineering spec — stack, data model, API, delivery phases: docs/ESPECIFICACAO-TECNICA.md.
 
 ## Core rules (invariants)
 
@@ -29,7 +29,7 @@ Web pomodoro timer. Anonymous use OK; login unlocks: theme presets, daily goal, 
 
 ## Themes
 
-- Everyone: light/dark. Logged-in: curated preset gallery only (no free color picker).
+- Light, dark and follow-the-system, for everyone. No preset gallery, no free color picker (dropped from scope 2026-09-10). Logged in, the choice follows the account together with language and timezone.
 
 ## PWA / offline
 
