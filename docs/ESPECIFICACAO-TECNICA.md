@@ -501,27 +501,27 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 
 **Pronto quando — front da conta (a tela conversando com a API):**
 
-- [ ] Visitante anônimo usa o timer sem nenhuma chamada à API; o CTA de cadastro é o único caminho para a conta.
-- [ ] Cadastro pela tela já entra logado e mostra o aviso de e-mail não confirmado, com o botão de reenviar.
-- [ ] Erro da API vira mensagem traduzida a partir do `code`; texto cru vindo do servidor nunca chega à tela.
-- [ ] Conta com onboarding pendente cai na tela de onboarding e não sai dela sem apelido, meta e fuso.
-- [ ] Recarregar com sessão válida reidrata o usuário por `GET /me`, sem pedir login de novo.
-- [ ] 401 com `code` `unauthenticated` em qualquer chamada derruba o estado local de sessão e devolve a
+- [x] Visitante anônimo usa o timer sem nenhuma chamada à API; o CTA de cadastro é o único caminho para a conta.
+- [x] Cadastro pela tela já entra logado e mostra o aviso de e-mail não confirmado, com o botão de reenviar.
+- [x] Erro da API vira mensagem traduzida a partir do `code`; texto cru vindo do servidor nunca chega à tela.
+- [x] Conta com onboarding pendente cai na tela de onboarding e não sai dela sem apelido, meta e fuso.
+- [x] Recarregar com sessão válida reidrata o usuário por `GET /me`, sem pedir login de novo.
+- [x] 401 com `code` `unauthenticated` em qualquer chamada derruba o estado local de sessão e devolve a
       pessoa à tela pública; 401 de senha errada na exclusão, que traz `invalid_credentials`, não desloga.
-- [ ] Sair encerra a sessão no servidor e limpa o estado local, mesmo que a chamada de logout falhe.
-- [ ] A tela da conta mostra a meta corrente e, havendo edição pendente, a data em que a nova meta passa a valer.
-- [ ] O saldo e o extrato de congelamentos vêm de `GET /me/freezes`, nunca de contagem feita no cliente.
-- [ ] A identidade nunca sai do cliente: nenhum identificador de usuário é guardado ou enviado; o cookie decide.
-- [ ] O fuso proposto no onboarding vem do navegador e continua editável antes de confirmar.
-- [ ] Excluir a conta pede a senha quando a conta tem uma, e não pede quando a conta veio do Google.
-- [ ] `GET /me` diz se a conta tem senha, sem devolver hash, dica ou qualquer parte dela.
-- [ ] Volta do Google com erro cai em `/entrar` com a mensagem traduzida do `erro` da URL; conta já completa
+- [x] Sair encerra a sessão no servidor e limpa o estado local, mesmo que a chamada de logout falhe.
+- [x] A tela da conta mostra a meta corrente e, havendo edição pendente, a data em que a nova meta passa a valer.
+- [x] O saldo e o extrato de congelamentos vêm de `GET /me/freezes`, nunca de contagem feita no cliente.
+- [x] A identidade nunca sai do cliente: nenhum identificador de usuário é guardado ou enviado; o cookie decide.
+- [x] O fuso proposto no onboarding vem do navegador e continua editável antes de confirmar.
+- [x] Excluir a conta pede a senha quando a conta tem uma, e não pede quando a conta veio do Google.
+- [x] `GET /me` diz se a conta tem senha, sem devolver hash, dica ou qualquer parte dela.
+- [x] Volta do Google com erro cai em `/entrar` com a mensagem traduzida do `erro` da URL; conta já completa
       cai no timer.
-- [ ] `/confirmar-email` consome o token da URL e mostra o resultado; token recusado vira mensagem, não tela
+- [x] `/confirmar-email` consome o token da URL e mostra o resultado; token recusado vira mensagem, não tela
       quebrada.
-- [ ] Pedir link de recuperação mostra a mesma tela com ou sem conta no endereço — o front não revela nada que
+- [x] Pedir link de recuperação mostra a mesma tela com ou sem conta no endereço — o front não revela nada que
       a API esconde.
-- [ ] `/nova-senha` troca a senha usando o token da URL e leva a pessoa para o login.
+- [x] `/nova-senha` troca a senha usando o token da URL e leva a pessoa para o login.
 
 ### Fase 3 — Ranking, perfil e conquistas
 

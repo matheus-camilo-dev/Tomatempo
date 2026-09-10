@@ -158,6 +158,32 @@ describe('tela da conta', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(pt.error.invalid_credentials)
   })
 
+  // O 401 que derruba a sessão local é o de `unauthenticated`, e não o status.
+  // Errar a senha na exclusão também responde 401 — e quem errou a senha
+  // continua logado, senão a tela puniria o engano com um logout (§5).
+  it('não deve deslogar quem errou a senha na exclusão', async () => {
+    contaEmPe()
+    server.use(
+      http.delete('/api/me', () =>
+        HttpResponse.json(
+          { title: 'Credenciais inválidas.', status: 401, code: 'invalid_credentials' },
+          { status: 401 },
+        ),
+      ),
+    )
+
+    const { router } = renderRoute({ path: '/conta' })
+    const user = userEvent.setup()
+
+    await user.type(await screen.findByLabelText(pt.account.deletePasswordLabel), 'errada12')
+    await user.click(screen.getByRole('button', { name: pt.account.deleteSubmit }))
+
+    await screen.findByRole('alert')
+    expect(hasSessionHint(localStorage)).toBe(true)
+    expect(router.state.location.pathname).toBe('/conta')
+    expect(await screen.findByTestId('goal-current')).toBeInTheDocument()
+  })
+
   it('deve mandar para o login, quando não há sessão alguma', async () => {
     const { router } = renderRoute({ path: '/conta' })
 
