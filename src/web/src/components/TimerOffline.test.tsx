@@ -446,6 +446,54 @@ describe('o fim da sessão local', () => {
     await waitFor(async () => expect(await pendingSessions()).toEqual([]))
   })
 
+  // Fechar a aba sem sair não passa por logout nem por 401: a fila de quem
+  // estava aqui antes continuaria de pé, e a próxima conta a entrar a receberia
+  // (REGRAS §8, decisão de 10/09/2026).
+  it('deve descartar a fila de quem ficou para trás ao entrar numa conta', async () => {
+    server.use(
+      http.post('/api/auth/login', () => new HttpResponse(null, { status: 204 })),
+      http.get('/api/me', () => HttpResponse.json(accountFixture())),
+      http.get('/api/stats/today', () =>
+        HttpResponse.json({
+          localDate: '2026-09-10',
+          completedPomodoros: 0,
+          focusMinutes: 0,
+          rankingMinutes: 0,
+          goal: 4,
+          goalMet: false,
+        }),
+      ),
+    )
+    await enqueueSession(itemDaFila())
+
+    renderRoute({ path: '/entrar' })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(pt.account.emailLabel), 'outra@exemplo.test')
+    await user.type(screen.getByLabelText(pt.account.passwordLabel), 'senha-bem-longa')
+    await user.click(screen.getByRole('button', { name: pt.account.signInSubmit }))
+
+    await waitFor(async () => expect(await pendingSessions()).toEqual([]))
+  })
+
+  it('deve descartar a fila ao criar uma conta', async () => {
+    server.use(
+      http.post('/api/auth/register', () => new HttpResponse(null, { status: 202 })),
+      http.get('/api/me', () => HttpResponse.json(accountFixture())),
+    )
+    await enqueueSession(itemDaFila())
+
+    renderRoute({ path: '/cadastrar' })
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText(pt.account.emailLabel), 'nova@exemplo.test')
+    await user.type(screen.getByLabelText(pt.account.passwordLabel), 'senha-bem-longa')
+    await user.type(screen.getByLabelText(pt.account.nicknameLabel), 'novapessoa')
+    await user.click(screen.getByRole('button', { name: pt.account.signUpSubmit }))
+
+    await waitFor(async () => expect(await pendingSessions()).toEqual([]))
+  })
+
   // Errar a senha na exclusão também responde 401, com `invalid_credentials`, e
   // não pode custar os ciclos pendentes de ninguém (§5).
   it('não deve descartar a fila quando o 401 é de senha errada', async () => {

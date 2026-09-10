@@ -227,7 +227,9 @@ fuso da conta, e não o offset que o navegador declarasse. A fila só recolhe ci
 anônimo não migra (§3.10) — e é **descartada no logout**: nenhum identificador de usuário pode ser guardado no
 navegador (§7.2/A01), então a fila não sabe de quem é, e sobreviver ao logout significaria drenar na próxima
 conta que entrasse ali. **Queda de sessão vale como logout** para esse fim: o 401 `unauthenticated` que apaga a
-pista de sessão apaga a fila junto, porque deixa o navegador no mesmo estado. O servidor aceita a sessão se, e somente se:
+pista de sessão apaga a fila junto, porque deixa o navegador no mesmo estado. E **entrar numa conta descarta a
+fila antes de assumir a sessão**: fechar a aba sem sair não passa por logout nem por 401, então a entrada é o
+único ponto em que dá para garantir que a fila de quem estava ali antes não drene na conta de quem chega. O servidor aceita a sessão se, e somente se:
 
 1. `startedAt` está dentro das últimas **48h** e não no futuro (tolerância de 2min);
 2. `duration` está entre 5 e 25min;
@@ -570,6 +572,7 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [x] Sair da conta descarta a fila offline junto com o resto do estado local.
 - [x] Sessão derrubada pelo 401 `unauthenticated` descarta a fila, igual ao logout; o 401 de senha errada na
       exclusão, que traz `invalid_credentials`, não descarta nada.
+- [ ] Entrar numa conta — login ou cadastro — começa com a fila vazia, mesmo sem logout anterior.
 - [x] Excluir a conta descarta a fila junto com o resto do estado local.
 - [x] Sem pista de sessão neste navegador, a fila não drena — nem se houver item nela.
 - [x] Resposta do lote fora do contrato mantém a fila e não quebra a drenagem.

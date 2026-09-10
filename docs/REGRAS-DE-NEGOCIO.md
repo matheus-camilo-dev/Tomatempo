@@ -91,7 +91,7 @@ Site web de Pomodoro utilizável **anonimamente**, com **login opcional** que de
   recolhe ciclo de quem está logado: o que o anônimo faz continua sendo dele e não migra.
 - **Sair da conta descarta o que ainda estiver na fila.** Quem sai offline com ciclos pendentes perde esses
   minutos. **A sessão que cai sozinha** — cookie expirado ou revogado — vale como saída: a fila é descartada
-  do mesmo jeito.
+  do mesmo jeito, e **entrar numa conta também começa com a fila vazia**.
 
 ## 9. Antifraude (resumo)
 
@@ -101,7 +101,7 @@ Site web de Pomodoro utilizável **anonimamente**, com **login opcional** que de
 4. Meta só muda para o dia seguinte.
 5. Conta nova começa zerada.
 6. Offline não pontua no ranking.
-7. Fila offline descartada no logout e na queda de sessão (não atravessa de uma conta para outra).
+7. Fila offline descartada ao sair, ao entrar e na queda de sessão (não atravessa de uma conta para outra).
 
 ## 10. Log de decisões
 
@@ -171,6 +171,11 @@ Site web de Pomodoro utilizável **anonimamente**, com **login opcional** que de
   conseguiu fechá-la não entra — quem o encerra é o varredor, e enfileirá-lo também o contaria duas vezes.
 - **Parcial abaixo de 5 minutos não entra na fila.** *Por quê*: é a mesma regra do parcial mínimo já valendo
   antes de a rede voltar; enfileirar para o servidor recusar depois só gasta viagem.
+- **Entrar numa conta começa com a fila vazia.** *Por quê*: sair não é o único jeito de a sessão acabar — quem
+  fecha a aba e não volta deixa a fila para trás sem nunca ter deslogado, e a próxima pessoa a entrar naquele
+  navegador receberia o foco dela. Como a fila não pode saber de quem ela é (nenhum identificador de usuário
+  no navegador), o único ponto seguro de decidir isso é a entrada. Custo assumido: quem volta a entrar na
+  própria conta sem ter saído perde os ciclos pendentes — o mesmo custo já aceito na queda de sessão.
 - **Navegador sem armazenamento para a fila não impede ninguém de usar o timer.** *Por quê*: o ciclo nunca
   dependeu de conta nem de rede, e não vai passar a depender de banco no navegador. Quem está em navegação
   privada com o armazenamento bloqueado perde os minutos offline, não o pomodoro.
