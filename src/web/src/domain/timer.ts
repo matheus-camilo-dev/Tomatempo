@@ -108,6 +108,36 @@ export function adoptWindow(
 }
 
 /**
+ * Retoma o foco que o servidor diz estar correndo (§3.2).
+ *
+ * Diferente de `adoptWindow`, aqui não há ciclo local pedindo a janela: ela
+ * chega porque a tela abriu e o servidor respondeu que há foco em andamento —
+ * por isso vale a partir do ocioso, que é o estado de quem perdeu o
+ * armazenamento do navegador ou abriu o app em outro dispositivo.
+ *
+ * Pausa em andamento não é interrompida: pausa não tem sessão no servidor (§2),
+ * e a aba que está de fato em foco continua batendo por ela. Ciclo já encerrado
+ * também fica quieto — ele já foi fechado ou enfileirado, e a sessão que o
+ * servidor ainda mostra é a que o varredor vai limpar.
+ */
+export function resumeFocus(
+  state: TimerState,
+  window: { readonly startedAt: number; readonly endsAt: number },
+): TimerState {
+  if (state.status !== 'idle' && !(state.status === 'running' && state.kind === 'focus')) {
+    return state
+  }
+
+  return {
+    kind: 'focus',
+    status: 'running',
+    startedAt: window.startedAt,
+    endsAt: window.endsAt,
+    completedPomodoros: state.completedPomodoros,
+  }
+}
+
+/**
  * Tempo restante, sempre derivado dos instantes absolutos — nunca de um
  * contador decrementado. É o que mantém a precisão com a aba congelada em
  * segundo plano ou a máquina suspensa.

@@ -573,15 +573,15 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [x] Abandonar chama `abandon` e mostra o parcial que o servidor creditou — inclusive o zero de quem parou
       antes dos 5 minutos.
 - [x] `session_expired` no heartbeat encerra o ciclo na tela com mensagem traduzida, sem quebrar.
-- [ ] Recarregar no meio do foco recupera a sessão por `GET /sessions/active` e volta com o tempo certo.
-- [ ] A sessão recuperada volta a bater e é ela que o fim do ciclo fecha.
-- [ ] Sessão ativa no servidor com o timer local parado retoma o ciclo na tela, com o tempo que o servidor diz.
-- [ ] Visitante anônimo não pergunta por sessão ativa alguma ao abrir a tela.
-- [ ] `204` no meio de um ciclo local não mostra aviso de sessão perdida e não interrompe a contagem.
-- [ ] Ciclo que atravessa um recarregamento sem resposta do servidor termina na fila offline.
-- [ ] Recuperar a sessão não a toma de outra aba: ler não é `start`.
-- [ ] Pausa em andamento não é interrompida pela sessão recuperada.
-- [ ] Ciclo começado antes de a resposta chegar não é atropelado pela sessão recuperada.
+- [x] Recarregar no meio do foco recupera a sessão por `GET /sessions/active` e volta com o tempo certo.
+- [x] A sessão recuperada volta a bater e é ela que o fim do ciclo fecha.
+- [x] Sessão ativa no servidor com o timer local parado retoma o ciclo na tela, com o tempo que o servidor diz.
+- [x] Visitante anônimo não pergunta por sessão ativa alguma ao abrir a tela.
+- [x] `204` no meio de um ciclo local não mostra aviso de sessão perdida e não interrompe a contagem.
+- [x] Ciclo que atravessa um recarregamento sem resposta do servidor termina na fila offline.
+- [x] Recuperar a sessão não a toma de outra aba: ler não é `start`.
+- [x] Pausa em andamento não é interrompida pela sessão recuperada.
+- [x] Ciclo começado antes de a resposta chegar não é atropelado pela sessão recuperada.
 - [x] Falha na conversa com o servidor não derruba o ciclo: não conseguindo abrir nem fechar a sessão, o
       timer começa e encerra pelo relógio local, como o do anônimo.
 - [x] Falha de rede num heartbeat não derruba o ciclo: a tela continua contando e o batimento seguinte reata.

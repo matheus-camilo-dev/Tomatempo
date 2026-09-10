@@ -13,6 +13,19 @@ export interface StartedSession {
   readonly serverNow: string
 }
 
+/**
+ * `GET /sessions/active` (§4). Ausente — 204 — quando não há foco correndo.
+ * Traz os mesmos instantes do `start`, e é por isso que a mesma tradução para o
+ * relógio local serve aos dois.
+ */
+export interface ActiveSession {
+  readonly sessionId: string
+  readonly startedAt: string
+  readonly endsAt: string
+  readonly serverNow: string
+  readonly remainingSeconds: number
+}
+
 export interface CompletedSession {
   readonly countedMinutes: number
   readonly completedToday: number
@@ -51,7 +64,10 @@ export interface LocalWindow {
  * nem esticá-lo (§3.2): o desconto move a janela junto com o erro, e a duração
  * exibida continua sendo a que o servidor carimbou.
  */
-export function toLocalWindow(session: StartedSession, localNow: number): LocalWindow {
+export function toLocalWindow(
+  session: StartedSession | ActiveSession,
+  localNow: number,
+): LocalWindow {
   const adiantamentoDoServidor = Date.parse(session.serverNow) - localNow
 
   return {

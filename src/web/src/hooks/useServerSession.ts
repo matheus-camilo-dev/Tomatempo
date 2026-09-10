@@ -5,7 +5,13 @@ import { CYCLE_DURATION_MS, HEARTBEAT_INTERVAL_MS } from '../domain/timer'
 import { ApiError, apiFetch } from '../lib/api'
 import { enqueueSession } from '../lib/offlineQueue'
 import { TODAY_QUERY_KEY } from '../lib/queryClient'
-import { toLocalWindow, type LocalWindow, type StartedSession, type TodayStats } from '../lib/serverSession'
+import {
+  toLocalWindow,
+  type ActiveSession,
+  type LocalWindow,
+  type StartedSession,
+  type TodayStats,
+} from '../lib/serverSession'
 import { useAccount } from './useAccount'
 import { useSessionHint } from './useSessionHint'
 import type { TimerStore } from './useTimerStore'
@@ -26,6 +32,13 @@ export interface UseServerSessionResult {
   abandonFocus(): void
   /** `code` do motivo, quando o servidor tirou a sessão desta aba; senão `null`. */
   readonly lostSession: string | null
+}
+
+/** O foco que está correndo na tela agora, ou `null` se não há um. */
+function focoLocal(store: TimerStore): number | null {
+  const { timer } = store.getState()
+
+  return timer.status === 'running' && timer.kind === 'focus' ? timer.startedAt : null
 }
 
 /**
@@ -151,6 +164,49 @@ export function useServerSession(store: TimerStore): UseServerSessionResult {
       document.removeEventListener('visibilitychange', naVolta)
     }
   }, [bater])
+
+  /**
+   * Recuperação ao abrir a tela (§3.2). Roda uma vez por montagem, antes de
+   * qualquer clique: o ciclo pode já estar correndo no servidor, e sem o id
+   * dele o batimento não reata.
+   */
+  const recuperada = useRef(false)
+
+  useEffect(() => {
+    if (!temConta || recuperada.current) return
+    recuperada.current = true
+
+    // Identidade do ciclo que está na tela agora. Se a pessoa começar um ciclo
+    // enquanto a resposta vem, é o dela que vale — o `start` dela já assumiu a
+    // sessão no servidor (§3.3), e a resposta que chega depois é passado.
+    const antes = store.getState().timer.startedAt
+
+    void (async () => {
+      let ativa: ActiveSession | undefined
+
+      try {
+        ativa = await apiFetch<ActiveSession | undefined>('/sessions/active')
+      } catch {
+        // Sem resposta não dá para saber se há sessão: o ciclo que estiver
+        // correndo vale como ciclo sem servidor e termina na fila (§3.4).
+        ativa = undefined
+      }
+
+      if (store.getState().timer.startedAt !== antes) return
+
+      // 204 e falha caem aqui: os dois são ambíguos do mesmo jeito, e a
+      // sobreposição no servidor é quem impede o crédito em dobro (§3.4).
+      if (!ativa) {
+        semServidor.current = focoLocal(store)
+
+        return
+      }
+
+      sessao.current = ativa.sessionId
+      semServidor.current = null
+      store.getState().resume(toLocalWindow(ativa, Date.now()))
+    })()
+  }, [temConta, store])
 
   const openFocus = useCallback(async (): Promise<LocalWindow | null> => {
     // Pausa não tem sessão no servidor: `focus_sessions` só guarda foco (§2).

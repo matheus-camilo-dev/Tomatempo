@@ -5,6 +5,7 @@ import {
   acknowledge as acknowledgeCycle,
   adoptWindow as adopt,
   createIdleState,
+  resumeFocus,
   remainingMs as remainingOf,
   start as startCycle,
   tick,
@@ -37,6 +38,11 @@ export interface TimerStoreState {
   start(): void
   /** Passa a contar pela janela do servidor, se o ciclo ainda for o mesmo. */
   adoptWindow(window: LocalWindow, expectedStartedAt: number | null): void
+  /**
+   * Retoma o foco que o servidor diz estar correndo, venha a tela do ocioso ou
+   * de um foco já em andamento (§3.2).
+   */
+  resume(window: LocalWindow): void
   /**
    * Volta ao ocioso sem creditar nada. É o desfecho de quem perdeu a sessão
    * para outra aba: o parcial já foi apurado lá, e creditar de novo aqui o
@@ -124,6 +130,16 @@ export function createTimerStore(options: TimerStoreOptions = {}): TimerStore {
         commit({ ...state, timer, nowMs: at, remainingMs: remainingOf(timer, at) })
       },
 
+      resume(window) {
+        const state = get()
+        const timer = resumeFocus(state.timer, window)
+        if (timer === state.timer) return
+
+        const at = Date.now()
+
+        commit({ ...state, timer, nowMs: at, remainingMs: remainingOf(timer, at) })
+      },
+
       adoptWindow(window, expectedStartedAt) {
         const state = get()
         const timer = adopt(state.timer, window, expectedStartedAt)
@@ -178,7 +194,7 @@ export function createTimerStore(options: TimerStoreOptions = {}): TimerStore {
  */
 function restore(storage: Storage | null, at: number): Omit<
   TimerStoreState,
-  'start' | 'sync' | 'acknowledge' | 'abandon' | 'adoptWindow' | 'stop'
+  'start' | 'sync' | 'acknowledge' | 'abandon' | 'adoptWindow' | 'resume' | 'stop'
 > {
   const persisted = readPersisted(storage)
   const fresh = {
