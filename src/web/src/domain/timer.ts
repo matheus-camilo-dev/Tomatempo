@@ -178,13 +178,19 @@ export function abandon(state: TimerState, now: number): AbandonResult {
 
   return {
     state: createIdleState(state.completedPomodoros),
-    creditedMinutes:
-      state.kind === 'focus' ? creditedMinutes(now - state.startedAt, state.kind) : 0,
+    creditedMinutes: state.kind === 'focus' ? creditedFocusMinutes(now - state.startedAt) : 0,
   }
 }
 
-function creditedMinutes(elapsedMs: number, kind: CycleKind): number {
-  const cappedMs = Math.min(Math.max(0, elapsedMs), CYCLE_DURATION_MS[kind])
+/**
+ * Minutos de foco que um trecho cumprido credita: inteiros, com teto na duração
+ * do ciclo e zerados abaixo do parcial mínimo (REGRAS §1).
+ *
+ * Exportada porque a fila offline credita pela mesma régua (§3.4) — ter duas
+ * cópias da regra é ter duas oportunidades de elas discordarem.
+ */
+export function creditedFocusMinutes(elapsedMs: number): number {
+  const cappedMs = Math.min(Math.max(0, elapsedMs), CYCLE_DURATION_MS.focus)
   const minutes = Math.floor(cappedMs / MINUTE_MS)
 
   return minutes < MIN_PARTIAL_MINUTES ? 0 : minutes

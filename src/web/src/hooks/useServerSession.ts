@@ -1,10 +1,13 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { HEARTBEAT_INTERVAL_MS } from '../domain/timer'
+import { queuedSession } from '../domain/offline'
+import { CYCLE_DURATION_MS, HEARTBEAT_INTERVAL_MS } from '../domain/timer'
 import { ApiError, apiFetch } from '../lib/api'
+import { enqueueSession } from '../lib/offlineQueue'
 import { TODAY_QUERY_KEY } from '../lib/queryClient'
 import { toLocalWindow, type LocalWindow, type StartedSession, type TodayStats } from '../lib/serverSession'
 import { useAccount } from './useAccount'
+import { useSessionHint } from './useSessionHint'
 import type { TimerStore } from './useTimerStore'
 
 export interface UseServerSessionResult {
@@ -46,6 +49,14 @@ export function useServerSession(store: TimerStore): UseServerSessionResult {
   const { account, isLoading } = useAccount()
   const client = useQueryClient()
 
+  /**
+   * Há conta neste navegador — a pista, e não `GET /me` (§7.2/A01). É ela que
+   * responde offline, que é justamente quando a fila tem o que recolher: quem
+   * abriu o app sem rede não tem conta carregada, e mesmo assim o ciclo dele é
+   * de uma conta (§3.4).
+   */
+  const temConta = useSessionHint()
+
   // Enquanto `GET /me` não responde, `account` é nulo e nada é perguntado — é o
   // que mantém o visitante anônimo sem uma única chamada (§5).
   const ativo = account !== null
@@ -66,6 +77,14 @@ export function useServerSession(store: TimerStore): UseServerSessionResult {
    * seria só ruído.
    */
   const sessao = useRef<string | null>(null)
+
+  /**
+   * Instante em que começou o ciclo que **não** conseguiu abrir sessão. É o que
+   * distingue o ciclo que vai para a fila do ciclo que o servidor já conhece —
+   * esse tem varredor para encerrá-lo, e enfileirá-lo o contaria duas vezes
+   * (§3.2, §3.4).
+   */
+  const semServidor = useRef<number | null>(null)
 
   const [perda, setPerda] = useState<string | null>(null)
 
@@ -135,10 +154,12 @@ export function useServerSession(store: TimerStore): UseServerSessionResult {
 
   const openFocus = useCallback(async (): Promise<LocalWindow | null> => {
     // Pausa não tem sessão no servidor: `focus_sessions` só guarda foco (§2).
-    if (!ativo || store.getState().timer.kind !== 'focus') return null
+    if (!temConta || store.getState().timer.kind !== 'focus') return null
 
     // Ciclo novo, aviso velho fora da tela.
     setPerda(null)
+
+    const inicio = store.getState().timer.startedAt
 
     try {
       const aberta = await apiFetch<StartedSession>('/sessions/start', {
@@ -147,16 +168,41 @@ export function useServerSession(store: TimerStore): UseServerSessionResult {
       })
 
       sessao.current = aberta.sessionId
+      semServidor.current = null
 
       return toLocalWindow(aberta, Date.now())
     } catch {
       // Offline é estado normal deste produto: o ciclo começa local e o que foi
       // cumprido sobe depois pelo lote (§3.4).
+      semServidor.current = inicio
+
       return null
     }
-  }, [ativo, store])
+  }, [temConta, store])
 
-  const abandonFocus = useCallback(() => void fechar('abandon'), [fechar])
+  /**
+   * Manda para a fila o ciclo que correu sem servidor. Parcial abaixo de 5
+   * minutos não entra: é a mesma regra do crédito (§3.1), aplicada antes de
+   * gastar a viagem que o servidor recusaria.
+   */
+  const enfileirar = useCallback(async (inicio: number, elapsedMs: number) => {
+    semServidor.current = null
+
+    const item = queuedSession({
+      clientSessionId: crypto.randomUUID(),
+      startedAt: inicio,
+      elapsedMs,
+    })
+
+    if (item) await enqueueSession(item)
+  }, [])
+
+  const abandonFocus = useCallback(() => {
+    const inicio = semServidor.current
+    if (inicio !== null) return void enfileirar(inicio, Date.now() - inicio)
+
+    void fechar('abandon')
+  }, [enfileirar, fechar])
 
   useEffect(
     () =>
@@ -166,9 +212,15 @@ export function useServerSession(store: TimerStore): UseServerSessionResult {
           state.timer.status === 'finished' &&
           state.timer.kind === 'focus'
 
-        if (acabou) void fechar('complete')
+        if (!acabou) return
+
+        // Sem sessão no servidor, o ciclo inteiro vai para a fila; com ela, o
+        // fim é o `complete`, e um exclui o outro.
+        const inicio = semServidor.current
+        if (inicio !== null) void enfileirar(inicio, CYCLE_DURATION_MS.focus)
+        else void fechar('complete')
       }),
-    [store, fechar],
+    [store, fechar, enfileirar],
   )
 
   return useMemo(

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import type { CycleKind } from '../domain/timer'
 import { POMODOROS_PER_LONG_BREAK, nextKind } from '../domain/timer'
 import { useCycleEndAlerts } from '../hooks/useCycleEndAlerts'
+import { useOfflineSync } from '../hooks/useOfflineSync'
 import { useServerSession } from '../hooks/useServerSession'
 import { useTheme } from '../hooks/useTheme'
 import { timerStore, useTimer } from '../hooks/useTimer'
@@ -61,6 +62,9 @@ export function TimerScreen({
   const servidor = useServerSession(store)
 
   useCycleEndAlerts(store, alerts)
+  // A fila mora aqui, na tela onde os ciclos offline são cumpridos e onde a
+  // pessoa fica: é o lugar em que a volta da conexão tem quem a escute (§3.4).
+  useOfflineSync()
 
   // Logado, o dia é o da conta e vem só do servidor; o histórico do navegador
   // continua sendo o do anônimo e nunca ocupa o lugar dele — nem enquanto a

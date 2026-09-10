@@ -1,14 +1,11 @@
 import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useSyncExternalStore } from 'react'
+import { useCallback } from 'react'
 import { ApiError, apiFetch } from '../lib/api'
 import type { Account, FreezeLedger, GoalChange } from '../lib/contracts'
+import { clearOfflineQueue } from '../lib/offlineQueue'
 import { FREEZES_QUERY_KEY, ME_QUERY_KEY } from '../lib/queryClient'
-import {
-  forgetSession,
-  hasSessionHint,
-  rememberSession,
-  subscribeSessionHint,
-} from '../lib/sessionHint'
+import { forgetSession, rememberSession } from '../lib/sessionHint'
+import { useSessionHint } from './useSessionHint'
 
 export interface UseAccountResult {
   /** `null` quando não há sessão — não é erro, é o estado normal de quem chega. */
@@ -93,6 +90,9 @@ export function useSignOut() {
     }
 
     forgetSession()
+    // A fila não sabe de quem ela é (§7.2/A01): sobrevivendo à saída, drenaria
+    // na próxima conta que entrasse neste navegador (§3.4).
+    await clearOfflineQueue()
     client.removeQueries({ queryKey: ME_QUERY_KEY })
   }, [client])
 
@@ -141,6 +141,7 @@ export function useDeleteAccount() {
       await apiFetch('/me', { method: 'DELETE', json: { password } })
 
       forgetSession()
+      await clearOfflineQueue()
       client.removeQueries({ queryKey: ME_QUERY_KEY })
     },
   })
@@ -172,15 +173,6 @@ export function useConfirmEmail() {
     mutationFn: (token: string) =>
       apiFetch('/auth/confirm-email', { method: 'POST', json: { token } }),
   })
-}
-
-function useSessionHint(): boolean {
-  return useSyncExternalStore(
-    subscribeSessionHint,
-    () => hasSessionHint(),
-    // No servidor não há armazenamento; o app nasce anônimo e o cliente corrige.
-    () => false,
-  )
 }
 
 async function carregarConta(client: QueryClient): Promise<Account | null> {

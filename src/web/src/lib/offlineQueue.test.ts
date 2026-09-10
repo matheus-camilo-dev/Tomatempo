@@ -34,7 +34,7 @@ function item(numero: number): QueuedSession {
 }
 
 /** Corpo de cada lote que chegou ao servidor, na ordem em que chegou. */
-function lotesRecebidos(resposta: (itens: QueuedSession[]) => HttpResponse | Response) {
+function lotesRecebidos(resposta: (itens: QueuedSession[]) => Response) {
   const lotes: QueuedSession[][] = []
 
   server.use(
@@ -208,7 +208,9 @@ describe('drenagem', () => {
     const [primeira, segunda] = await Promise.all([drainOfflineQueue(), drainOfflineQueue()])
 
     expect(lotes).toEqual([[item(1)]])
-    expect(primeira + segunda).toBe(1)
+    // As duas enxergam a mesma ida: quem chegou depois pega carona nela em vez
+    // de abrir a sua, e por isso recebe o mesmo resultado.
+    expect([primeira, segunda]).toEqual([1, 1])
   })
 
   it('deve drenar de novo depois que a drenagem anterior terminou', async () => {
@@ -286,5 +288,34 @@ describe('navegador sem IndexedDB', () => {
 
   it('não deve estourar ao descartar a fila', async () => {
     await expect(clearOfflineQueue()).resolves.toBeUndefined()
+  })
+})
+
+/**
+ * O outro lado do mesmo critério: o navegador tem `indexedDB`, e é a abertura
+ * que é recusada — é assim que a navegação privada do Firefox se comporta.
+ */
+describe('navegador que recusa abrir o banco', () => {
+  beforeEach(() => {
+    vi.stubGlobal('indexedDB', {
+      open: () => {
+        throw new DOMException('bloqueado', 'InvalidStateError')
+      },
+    })
+  })
+
+  it('não deve estourar ao enfileirar', async () => {
+    await expect(enqueueSession(item(1))).resolves.toBeUndefined()
+  })
+
+  it('deve responder fila vazia', async () => {
+    expect(await pendingSessions()).toEqual([])
+  })
+
+  it('não deve tocar a rede ao drenar', async () => {
+    const lotes = aceitandoTudo()
+
+    expect(await drainOfflineQueue()).toBe(0)
+    expect(lotes).toEqual([])
   })
 })

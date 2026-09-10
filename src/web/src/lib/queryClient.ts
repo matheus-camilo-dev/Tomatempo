@@ -1,5 +1,6 @@
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query'
 import { ApiError } from './api'
+import { clearOfflineQueue } from './offlineQueue'
 import { forgetSession } from './sessionHint'
 
 export const ME_QUERY_KEY = ['me'] as const
@@ -36,5 +37,9 @@ function derrubarSessao(client: QueryClient, erro: unknown): void {
   if (!(erro instanceof ApiError) || erro.code !== 'unauthenticated') return
 
   forgetSession()
+  // Cookie vencido ou revogado deixa o navegador no mesmo estado do logout, e a
+  // fila offline não sabe de quem ela é: ficar para trás significaria drenar na
+  // próxima conta que entrasse aqui (REGRAS §8, decisão de 10/09/2026).
+  void clearOfflineQueue()
   client.setQueryData(ME_QUERY_KEY, null)
 }

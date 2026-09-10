@@ -563,23 +563,23 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
       nunca é somado a ele.
 - [x] Enquanto o dia da conta não chega, a tela não mostra o histórico local no lugar dele — nem por um
       instante.
-- [ ] Ciclo cumprido offline entra na fila com `clientSessionId` próprio e drena para `/sessions/offline-batch`
+- [x] Ciclo cumprido offline entra na fila com `clientSessionId` próprio e drena para `/sessions/offline-batch`
       quando a conexão volta.
-- [ ] Item sai da fila só depois da resposta; recusado é descartado sem retry, aceito nunca é reenviado.
-- [ ] Drenar duas vezes a mesma fila credita uma vez só.
-- [ ] Sair da conta descarta a fila offline junto com o resto do estado local.
-- [ ] Sessão derrubada pelo 401 `unauthenticated` descarta a fila, igual ao logout; o 401 de senha errada na
+- [x] Item sai da fila só depois da resposta; recusado é descartado sem retry, aceito nunca é reenviado.
+- [x] Drenar duas vezes a mesma fila credita uma vez só.
+- [x] Sair da conta descarta a fila offline junto com o resto do estado local.
+- [x] Sessão derrubada pelo 401 `unauthenticated` descarta a fila, igual ao logout; o 401 de senha errada na
       exclusão, que traz `invalid_credentials`, não descarta nada.
-- [ ] Excluir a conta descarta a fila junto com o resto do estado local.
-- [ ] Sem pista de sessão neste navegador, a fila não drena — nem se houver item nela.
-- [ ] Resposta do lote fora do contrato mantém a fila e não quebra a drenagem.
-- [ ] Ciclo do anônimo não entra na fila, mesmo offline.
-- [ ] Ciclo que abriu sessão no servidor não entra na fila, nem quando o fechamento não vai.
-- [ ] Abandono offline entra com o parcial truncado; abaixo de 5 minutos não entra.
-- [ ] Fila com mais itens que o teto do lote sobe em lotes sucessivos, nenhum acima do teto.
-- [ ] Drenagem sem resposta do servidor mantém a fila inteira para a próxima tentativa.
-- [ ] App aberto online com fila pendente drena sem esperar evento de reconexão.
-- [ ] Navegador sem IndexedDB não derruba o ciclo: a fila não recolhe e o timer segue contando.
+- [x] Excluir a conta descarta a fila junto com o resto do estado local.
+- [x] Sem pista de sessão neste navegador, a fila não drena — nem se houver item nela.
+- [x] Resposta do lote fora do contrato mantém a fila e não quebra a drenagem.
+- [x] Ciclo do anônimo não entra na fila, mesmo offline.
+- [x] Ciclo que abriu sessão no servidor não entra na fila, nem quando o fechamento não vai.
+- [x] Abandono offline entra com o parcial truncado; abaixo de 5 minutos não entra.
+- [x] Fila com mais itens que o teto do lote sobe em lotes sucessivos, nenhum acima do teto.
+- [x] Drenagem sem resposta do servidor mantém a fila inteira para a próxima tentativa.
+- [x] App aberto online com fila pendente drena sem esperar evento de reconexão.
+- [x] Navegador sem IndexedDB não derruba o ciclo: a fila não recolhe e o timer segue contando.
 
 ### Fase 3 — Ranking, perfil e conquistas
 

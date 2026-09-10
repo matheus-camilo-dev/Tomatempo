@@ -152,11 +152,12 @@ describe('o ciclo cumprido sem servidor', () => {
     montar()
     await assentar()
     iniciar()
+    await assentar()
     await avancar(25 * MINUTE)
 
     const fila = await pendingSessions()
     expect(fila).toHaveLength(1)
-    expect(fila[0].clientSessionId).toMatch(UUID)
+    expect(fila[0]?.clientSessionId).toMatch(UUID)
   })
 
   it('deve entrar na fila com o instante do início e os 25 minutos cheios', async () => {
@@ -165,6 +166,7 @@ describe('o ciclo cumprido sem servidor', () => {
     montar()
     await assentar()
     iniciar()
+    await assentar()
     await avancar(25 * MINUTE)
 
     expect(await pendingSessions()).toEqual([
@@ -178,10 +180,12 @@ describe('o ciclo cumprido sem servidor', () => {
     montar()
     await assentar()
     iniciar()
+    await assentar()
     await avancar(25 * MINUTE)
     fireEvent.click(screen.getByRole('button', { name: pt.action.startShortBreak }))
     await avancar(5 * MINUTE)
     fireEvent.click(screen.getByRole('button', { name: pt.action.startFocus }))
+    await assentar()
     await avancar(25 * MINUTE)
 
     const ids = (await pendingSessions()).map((i) => i.clientSessionId)
@@ -194,6 +198,7 @@ describe('o ciclo cumprido sem servidor', () => {
     montar()
     await assentar()
     iniciar()
+    await assentar()
     await avancar(25 * MINUTE)
 
     expect(await pendingSessions()).toEqual([])
@@ -224,6 +229,7 @@ describe('o ciclo cumprido sem servidor', () => {
     montar()
     await assentar()
     iniciar()
+    await assentar()
     await avancar(25 * MINUTE)
 
     expect(await pendingSessions()).toEqual([])
@@ -235,6 +241,7 @@ describe('o ciclo cumprido sem servidor', () => {
     montar()
     await assentar()
     iniciar()
+    await assentar()
     await avancar(12 * MINUTE + 30_000)
     abandonar()
     await assentar()
@@ -248,6 +255,7 @@ describe('o ciclo cumprido sem servidor', () => {
     montar()
     await assentar()
     iniciar()
+    await assentar()
     await avancar(3 * MINUTE)
     abandonar()
     await assentar()
@@ -261,6 +269,7 @@ describe('o ciclo cumprido sem servidor', () => {
     montar()
     await assentar()
     iniciar()
+    await assentar()
     await avancar(25 * MINUTE)
     fireEvent.click(screen.getByRole('button', { name: pt.action.startShortBreak }))
     await avancar(5 * MINUTE)
@@ -288,13 +297,14 @@ describe('a volta da conexão', () => {
     montar()
     await assentar()
     iniciar()
+    await assentar()
     await avancar(25 * MINUTE)
 
     reconectar()
     await assentar()
 
     expect(lotes).toHaveLength(1)
-    expect(lotes[0][0].durationSeconds).toBe(25 * 60)
+    expect(lotes[0]?.[0]?.durationSeconds).toBe(25 * 60)
     expect(await pendingSessions()).toEqual([])
   })
 
@@ -351,6 +361,20 @@ describe('a volta da conexão', () => {
     await assentar()
 
     expect(lotes).toHaveLength(1)
+  })
+
+  // `navigator.onLine` é otimista, mas com a interface de rede caída não há
+  // sequer o que tentar (§3.4).
+  it('não deve tentar drenar na abertura com a rede caída', async () => {
+    comContaSemSessao()
+    const lotes = aceitandoOLote()
+    await enqueueSession(itemDaFila())
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+
+    montar()
+    await assentar()
+
+    expect(lotes).toEqual([])
   })
 
   it('não deve tocar a rede na abertura quando a fila está vazia', async () => {
