@@ -40,6 +40,8 @@ Site web de Pomodoro utilizável **anonimamente**, com **login opcional** que de
 - **Excluir a conta** apaga os dados pessoais e libera o e-mail e o apelido para um cadastro novo. Quem tem
   senha precisa digitá-la para confirmar — sessão esquecida aberta não apaga conta de ninguém.
 - **Conta começa do zero** — o histórico anônimo do navegador não migra (proteção do ranking contra dados forjados).
+- **O placar de quem está logado é o da conta**, servido pelo servidor: o histórico guardado no navegador
+  continua sendo o do anônimo e nunca é somado ao da conta.
 - **CTA para deslogados**: área na tela convidando a criar conta para participar do ranking.
 
 ## 3. Meta diária
@@ -78,11 +80,17 @@ Site web de Pomodoro utilizável **anonimamente**, com **login opcional** que de
 ## 7. Estatísticas pessoais (logados)
 
 - Minutos por dia/semana, histórico de streak, melhor semana. Alimentam o perfil público.
+- O dia que a pessoa logada vê — pomodoros, minutos e meta — é sempre o que o servidor apurou, e não uma
+  contagem feita no navegador.
 
 ## 8. PWA / Offline
 
 - Site **instalável** (ícone próprio, janela de app, notificações melhores).
 - **Offline**: aviso visível de que está offline. O timer continua funcionando e os pomodoros **contam para a meta diária e a streak**, mas **não pontuam no ranking** — minutos de ranking exigem estar online, com validação do servidor.
+- **O que foi feito offline fica numa fila no navegador** e sobe para a conta quando a conexão volta. A fila só
+  recolhe ciclo de quem está logado: o que o anônimo faz continua sendo dele e não migra.
+- **Sair da conta descarta o que ainda estiver na fila.** Quem sai offline com ciclos pendentes perde esses
+  minutos.
 
 ## 9. Antifraude (resumo)
 
@@ -92,6 +100,7 @@ Site web de Pomodoro utilizável **anonimamente**, com **login opcional** que de
 4. Meta só muda para o dia seguinte.
 5. Conta nova começa zerada.
 6. Offline não pontua no ranking.
+7. Fila offline descartada no logout (não atravessa de uma conta para outra).
 
 ## 10. Log de decisões
 
@@ -136,6 +145,18 @@ Site web de Pomodoro utilizável **anonimamente**, com **login opcional** que de
   bem-sucedido já devolve a sessão, quem observa a resposta crua ainda distingue e-mail novo de e-mail
   existente pela presença do cookie. Contido pelo limite de 5 tentativas por minuto, o mesmo do login;
   eliminá-lo exigiria abrir mão do login automático no cadastro.
+
+### 09/09/2026 — o timer logado conversando com o servidor
+
+- **O dia de quem está logado vem do servidor, e o histórico local não é somado a ele.** *Por quê*: com duas
+  contagens na mesma tela, a divergência entre elas vira suporte — e a contagem que o navegador faz é
+  justamente a que uma pessoa mal-intencionada consegue editar. Uma fonte de verdade só, e é a que já decide
+  meta, streak e ranking. O histórico local continua existindo para o anônimo, que não tem servidor algum.
+- **Sair da conta descarta o que ainda estiver na fila offline.** *Por quê*: nenhum identificador de usuário
+  pode ser guardado no navegador, então a fila não tem como saber de quem ela é. Sobrevivendo ao logout, ela
+  drenaria na próxima conta que entrasse naquele navegador — creditar o foco de uma pessoa na conta de outra,
+  exatamente o dano que "conta nova começa zerada" existe para impedir. Custo assumido: quem sai offline com
+  ciclos pendentes perde esses minutos; é o lado barato do erro.
 
 ## Pendências
 

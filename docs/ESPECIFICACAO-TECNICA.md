@@ -222,7 +222,9 @@ assumida em outro dispositivo".
 ### 3.4 Offline
 
 O cliente enfileira em IndexedDB `{clientSessionId, startedAtLocal, offsetMinutes, durationSeconds}` e envia em
-lote ao reconectar. O servidor aceita a sessão se, e somente se:
+lote ao reconectar. A fila só recolhe ciclo de quem está logado — o do anônimo não migra (§3.10) — e é
+**descartada no logout**: nenhum identificador de usuário pode ser guardado no navegador (§7.2/A01), então a
+fila não sabe de quem é, e sobreviver ao logout significaria drenar na próxima conta que entrasse ali. O servidor aceita a sessão se, e somente se:
 
 1. `startedAt` está dentro das últimas **48h** e não no futuro (tolerância de 2min);
 2. `duration` está entre 5 e 25min;
@@ -522,6 +524,27 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [x] Pedir link de recuperação mostra a mesma tela com ou sem conta no endereço — o front não revela nada que
       a API esconde.
 - [x] `/nova-senha` troca a senha usando o token da URL e leva a pessoa para o login.
+
+**Pronto quando — o timer logado conversando com a API:**
+
+- [ ] Visitante anônimo continua sem chamada alguma de sessão: iniciar, abandonar e concluir não tocam a API.
+- [ ] Iniciar o ciclo com sessão de pé abre a sessão no servidor, e o tempo restante exibido passa a vir dos
+      instantes que o servidor carimbou, não do relógio da máquina.
+- [ ] Enquanto o foco corre, o heartbeat sai a cada 30s; aba em segundo plano não deixa a cadeia arrebentar
+      antes dos 90s.
+- [ ] Concluir o ciclo chama `complete`, e o dia mostrado passa a ser o que a API devolveu.
+- [ ] Abandonar chama `abandon` e mostra o parcial que o servidor creditou — inclusive o zero de quem parou
+      antes dos 5 minutos.
+- [ ] `session_expired` no heartbeat encerra o ciclo na tela com mensagem traduzida, sem quebrar.
+- [ ] Recarregar no meio do foco recupera a sessão por `GET /sessions/active` e volta com o tempo certo.
+- [ ] Falha de rede num heartbeat não derruba o ciclo: a tela continua contando e o batimento seguinte reata.
+- [ ] O dia de quem está logado vem de `GET /stats/today` — pomodoros, minutos e meta —, e o histórico local
+      nunca é somado a ele.
+- [ ] Ciclo cumprido offline entra na fila com `clientSessionId` próprio e drena para `/sessions/offline-batch`
+      quando a conexão volta.
+- [ ] Item sai da fila só depois da resposta; recusado é descartado sem retry, aceito nunca é reenviado.
+- [ ] Drenar duas vezes a mesma fila credita uma vez só.
+- [ ] Sair da conta descarta a fila offline junto com o resto do estado local.
 
 ### Fase 3 — Ranking, perfil e conquistas
 
