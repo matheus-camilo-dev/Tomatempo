@@ -1,8 +1,10 @@
+import { QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AlertPorts } from '../lib/alerts'
 import { createTimerStore, type TimerStore } from '../hooks/useTimerStore'
+import { createQueryClient } from '../lib/queryClient'
 import { TimerScreen } from './TimerScreen'
 
 const MINUTE = 60_000
@@ -30,7 +32,15 @@ function memoryStorage(): Storage {
  */
 function setup(): TimerStore {
   const store = createTimerStore({ storage: memoryStorage() })
-  render(<TimerScreen store={store} />)
+
+  // O provider é obrigatório desde que a tela passou a ler o dia da conta: sem
+  // conta ela não pergunta nada — o MSW aqui recusa requisição não declarada e
+  // é quem prova isso —, mas o hook do React Query precisa do cliente existir.
+  render(
+    <QueryClientProvider client={createQueryClient()}>
+      <TimerScreen store={store} />
+    </QueryClientProvider>,
+  )
 
   return store
 }
@@ -175,7 +185,11 @@ describe('alertas', () => {
       notify: vi.fn(),
       isHidden: () => false,
     }
-    render(<TimerScreen store={createTimerStore({ storage: memoryStorage() })} alerts={alerts} />)
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <TimerScreen store={createTimerStore({ storage: memoryStorage() })} alerts={alerts} />
+      </QueryClientProvider>,
+    )
 
     return alerts
   }

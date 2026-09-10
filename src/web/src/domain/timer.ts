@@ -79,6 +79,28 @@ export function start(state: TimerState, now: number): TimerState {
 }
 
 /**
+ * Passa o ciclo em andamento a contar pela janela que o servidor carimbou (§3.2).
+ *
+ * O ciclo começa no clique, pelo relógio local, e só depois a resposta do
+ * servidor chega — esperar por ela deixaria o contador parado durante a ida e
+ * volta da rede. A correção é pequena por construção: as duas janelas diferem
+ * pela latência, não por minutos.
+ *
+ * `expectedStartedAt` é a identidade do ciclo que pediu a sessão. Sem ela, uma
+ * resposta atrasada cairia sobre o ciclo seguinte — quem abandona e recomeça
+ * dentro da ida e volta contaria o segundo ciclo pela janela do primeiro.
+ */
+export function adoptWindow(
+  state: TimerState,
+  window: { readonly startedAt: number; readonly endsAt: number },
+  expectedStartedAt: number | null,
+): TimerState {
+  if (state.status !== 'running' || state.startedAt !== expectedStartedAt) return state
+
+  return { ...state, startedAt: window.startedAt, endsAt: window.endsAt }
+}
+
+/**
  * Tempo restante, sempre derivado dos instantes absolutos — nunca de um
  * contador decrementado. É o que mantém a precisão com a aba congelada em
  * segundo plano ou a máquina suspensa.

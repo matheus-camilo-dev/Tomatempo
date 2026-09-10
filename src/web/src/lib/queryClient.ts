@@ -4,6 +4,7 @@ import { forgetSession } from './sessionHint'
 
 export const ME_QUERY_KEY = ['me'] as const
 export const FREEZES_QUERY_KEY = ['me', 'freezes'] as const
+export const TODAY_QUERY_KEY = ['stats', 'today'] as const
 
 /**
  * Um cliente por app — e um por teste, para que o cache de um caso não vire a

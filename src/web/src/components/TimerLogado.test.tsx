@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { HttpResponse, http } from 'msw'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -50,17 +50,27 @@ afterEach(() => {
 })
 
 /** Deixa a rede responder e o React repintar. */
-async function assentar(): Promise<void> {
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(0)
-  })
+async function assentar(voltas = 20): Promise<void> {
+  // Várias voltas e não uma: `/me` e `/stats/today` são encadeados — o segundo
+  // só é disparado depois que o primeiro responde —, e cada requisição consome
+  // mais de um giro atravessando o interceptador do MSW. Com o relógio parado
+  // não há `waitFor` que sirva (§6.4), então a espera é este laço.
+  for (let i = 0; i < voltas; i++) {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+  }
 }
 
-/** Avança o relógio deixando o tique do timer rodar, e então assenta a rede. */
+/**
+ * Avança o relógio deixando o tique do timer rodar, e então assenta a rede.
+ *
+ * Avanço síncrono, como no resto da suíte do timer: a variante assíncrona gira
+ * o laço de eventos uma vez por tique — seis mil vezes em vinte e cinco minutos
+ * de ciclo — e estoura o tempo do runner sem simular nada a mais.
+ */
 async function avancar(ms: number): Promise<void> {
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(ms)
-  })
+  act(() => void vi.advanceTimersByTime(ms))
   await assentar()
 }
 
@@ -101,6 +111,26 @@ function abandonar(): void {
 }
 
 describe('visitante anônimo', () => {
+  it('deve mostrar o dia local, e não o da conta que não existe', async () => {
+    montar(
+      createTimerStore({
+        storage: memoryStorage({
+          'tomatempo:timer:v1': JSON.stringify({
+            timer: { kind: 'focus', status: 'idle', startedAt: null, endsAt: null, completedPomodoros: 2 },
+            log: { date: '2026-09-03', focusMinutes: 50, completedPomodoros: 2 },
+            runningDateKey: '2026-09-03',
+          }),
+        }),
+      }),
+    )
+    // Sem conta não há query alguma para assentar: um giro basta, e `waitFor`
+    // não serve com o relógio parado (§6.4).
+    await assentar()
+
+    expect(screen.getByTestId('today-summary')).toHaveTextContent('2 pomodoros')
+    expect(screen.getByTestId('today-summary')).toHaveTextContent('50 min')
+  })
+
   it('não deve tocar a API em ciclo algum', async () => {
     const chamadas: string[] = []
     server.use(
@@ -184,6 +214,13 @@ describe('sessão no servidor', () => {
 })
 
 describe('o dia da conta', () => {
+  // Relógio de verdade aqui: nenhum destes casos dirige o tempo, e o React
+  // Query não assenta com o relógio parado — o laço de `advanceTimersByTimeAsync`
+  // gira sem nunca disparar o agendador dele (§6.4).
+  beforeEach(() => {
+    vi.useRealTimers()
+  })
+
   it('deve vir do servidor, e não da contagem local', async () => {
     logado({ completedPomodoros: 7, focusMinutes: 180 })
 
@@ -200,13 +237,17 @@ describe('o dia da conta', () => {
         }),
       }),
     )
-    await assentar()
-
-    expect(screen.getByTestId('today-summary')).toHaveTextContent('7 pomodoros')
+    await waitFor(() =>
+      expect(screen.getByTestId('today-summary')).toHaveTextContent('7 pomodoros'),
+    )
     expect(screen.getByTestId('today-summary')).toHaveTextContent('180 min')
   })
 
-  it('deve continuar sendo o local, para quem não tem conta', async () => {
+  // Mostrar o dia do anônimo para quem tem conta, mesmo por um instante, é
+  // mostrar número de outra pessoa (REGRAS §2).
+  it('não deve mostrar o dia local enquanto o do servidor não chega', async () => {
+    logado({ completedPomodoros: 7, focusMinutes: 180 })
+
     montar(
       createTimerStore({
         storage: memoryStorage({
@@ -218,11 +259,15 @@ describe('o dia da conta', () => {
         }),
       }),
     )
-    await assentar()
 
-    expect(screen.getByTestId('today-summary')).toHaveTextContent('2 pomodoros')
-    expect(screen.getByTestId('today-summary')).toHaveTextContent('50 min')
+    expect(screen.getByTestId('today-summary')).not.toHaveTextContent('2 pomodoros')
+    expect(screen.getByTestId('today-summary')).not.toHaveTextContent('50 min')
+
+    await waitFor(() =>
+      expect(screen.getByTestId('today-summary')).toHaveTextContent('7 pomodoros'),
+    )
   })
+
 })
 
 describe('servidor fora do ar', () => {

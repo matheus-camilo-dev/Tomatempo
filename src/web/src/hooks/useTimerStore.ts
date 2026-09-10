@@ -3,6 +3,7 @@ import {
   CYCLE_DURATION_MS,
   abandon as abandonCycle,
   acknowledge as acknowledgeCycle,
+  adoptWindow as adopt,
   createIdleState,
   remainingMs as remainingOf,
   start as startCycle,
@@ -17,6 +18,7 @@ import {
   type DailyLog,
   type DailyTotals,
 } from '../domain/dailyLog'
+import type { LocalWindow } from '../lib/serverSession'
 
 const STORAGE_KEY = 'tomatempo:timer:v1'
 
@@ -33,6 +35,8 @@ export interface TimerStoreState {
    */
   readonly runningDateKey: string
   start(): void
+  /** Passa a contar pela janela do servidor, se o ciclo ainda for o mesmo. */
+  adoptWindow(window: LocalWindow, expectedStartedAt: number | null): void
   sync(): void
   acknowledge(): void
   abandon(): void
@@ -106,6 +110,16 @@ export function createTimerStore(options: TimerStoreOptions = {}): TimerStore {
         })
       },
 
+      adoptWindow(window, expectedStartedAt) {
+        const state = get()
+        const timer = adopt(state.timer, window, expectedStartedAt)
+        if (timer === state.timer) return
+
+        const at = Date.now()
+
+        commit({ ...state, timer, nowMs: at, remainingMs: remainingOf(timer, at) })
+      },
+
       sync() {
         commit(advance(get(), Date.now()))
       },
@@ -150,7 +164,7 @@ export function createTimerStore(options: TimerStoreOptions = {}): TimerStore {
  */
 function restore(storage: Storage | null, at: number): Omit<
   TimerStoreState,
-  'start' | 'sync' | 'acknowledge' | 'abandon'
+  'start' | 'sync' | 'acknowledge' | 'abandon' | 'adoptWindow'
 > {
   const persisted = readPersisted(storage)
   const fresh = {

@@ -527,21 +527,23 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 
 **Pronto quando — o timer logado conversando com a API:**
 
-- [ ] Visitante anônimo continua sem chamada alguma de sessão: iniciar, abandonar e concluir não tocam a API.
-- [ ] Iniciar o ciclo com sessão de pé abre a sessão no servidor, e o tempo restante exibido passa a vir dos
+- [x] Visitante anônimo continua sem chamada alguma de sessão: iniciar, abandonar e concluir não tocam a API.
+- [x] Iniciar o ciclo com sessão de pé abre a sessão no servidor, e o tempo restante exibido passa a vir dos
       instantes que o servidor carimbou, não do relógio da máquina.
 - [ ] Enquanto o foco corre, o heartbeat sai a cada 30s; aba em segundo plano não deixa a cadeia arrebentar
       antes dos 90s.
-- [ ] Concluir o ciclo chama `complete`, e o dia mostrado passa a ser o que a API devolveu.
-- [ ] Abandonar chama `abandon` e mostra o parcial que o servidor creditou — inclusive o zero de quem parou
+- [x] Concluir o ciclo chama `complete`, e o dia mostrado passa a ser o que a API devolveu.
+- [x] Abandonar chama `abandon` e mostra o parcial que o servidor creditou — inclusive o zero de quem parou
       antes dos 5 minutos.
 - [ ] `session_expired` no heartbeat encerra o ciclo na tela com mensagem traduzida, sem quebrar.
 - [ ] Recarregar no meio do foco recupera a sessão por `GET /sessions/active` e volta com o tempo certo.
-- [ ] Falha na conversa com o servidor não derruba o ciclo: não conseguindo abrir nem fechar a sessão, o
+- [x] Falha na conversa com o servidor não derruba o ciclo: não conseguindo abrir nem fechar a sessão, o
       timer começa e encerra pelo relógio local, como o do anônimo.
 - [ ] Falha de rede num heartbeat não derruba o ciclo: a tela continua contando e o batimento seguinte reata.
-- [ ] O dia de quem está logado vem de `GET /stats/today` — pomodoros, minutos e meta —, e o histórico local
+- [x] O dia de quem está logado vem de `GET /stats/today` — pomodoros, minutos e meta —, e o histórico local
       nunca é somado a ele.
+- [x] Enquanto o dia da conta não chega, a tela não mostra o histórico local no lugar dele — nem por um
+      instante.
 - [ ] Ciclo cumprido offline entra na fila com `clientSessionId` próprio e drena para `/sessions/offline-batch`
       quando a conexão volta.
 - [ ] Item sai da fila só depois da resposta; recusado é descartado sem retry, aceito nunca é reenviado.
@@ -656,6 +658,10 @@ Limites que valem como regra:
   `waitFor` não serve para esperar a rede com o relógio parado — quem faz a espera é
   `await act(async () => { await vi.advanceTimersByTimeAsync(0) })`, que gira o laço de eventos uma vez e deixa
   o React repintar.
+- **Teste que não dirige o relógio não instala relógio falso.** O React Query agenda pelo próprio escalonador,
+  e ele não anda com `advanceTimersByTimeAsync(0)`: a query resolve a requisição e nunca entrega o dado. Onde o
+  caso só espera a rede — a tela lendo o dia da conta, por exemplo —, o relógio é o de verdade e a espera é
+  `waitFor`. O relógio falso fica para quem realmente precisa dele: ciclo de 25 minutos, expiração, virada de dia.
 
 ### 6.5 Convenções
 

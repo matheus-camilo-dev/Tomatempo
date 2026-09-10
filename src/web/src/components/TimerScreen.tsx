@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import type { CycleKind } from '../domain/timer'
 import { POMODOROS_PER_LONG_BREAK, nextKind } from '../domain/timer'
 import { useCycleEndAlerts } from '../hooks/useCycleEndAlerts'
+import { useServerSession } from '../hooks/useServerSession'
 import { useTheme } from '../hooks/useTheme'
 import { timerStore, useTimer } from '../hooks/useTimer'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
@@ -56,8 +57,14 @@ export function TimerScreen({
   const { preference, setPreference } = useTheme()
   const online = useOnlineStatus()
   const { timer, remainingMs, todayTotals, start, abandon, acknowledge } = useTimer(store)
+  const servidor = useServerSession(store)
 
   useCycleEndAlerts(store, alerts)
+
+  // Logado, o dia é o da conta e vem só do servidor; o histórico do navegador
+  // continua sendo o do anônimo e nunca ocupa o lugar dele — nem enquanto a
+  // resposta não chega, nem com a rede fora (REGRAS §2).
+  const hoje = servidor.signedIn ? servidor.today : todayTotals
 
   const isRunning = timer.status === 'running'
   const isFinished = timer.status === 'finished'
@@ -70,12 +77,26 @@ export function TimerScreen({
     // Destrava áudio e permissão aqui, no gesto: é a única janela em que o
     // navegador aceita, e o alarme só vai tocar 25 minutos depois.
     alerts.prepare()
+
+    // O ciclo começa agora, pelo relógio local. Esperar o servidor deixaria o
+    // contador parado durante a ida e volta da rede — e para quem não tem conta
+    // não há ida e volta alguma (§5).
     start()
+
+    const doCiclo = store.getState().timer.startedAt
+    void servidor
+      .openFocus()
+      .then((janela) => janela && store.getState().adoptWindow(janela, doCiclo))
   }
 
   function startNext() {
     acknowledge()
     beginCycle()
+  }
+
+  function abandonCycle() {
+    abandon()
+    servidor.abandonFocus()
   }
 
   return (
@@ -131,7 +152,7 @@ export function TimerScreen({
       {isRunning ? (
         <button
           type="button"
-          onClick={abandon}
+          onClick={abandonCycle}
           className="rounded-full border border-slate-300 px-8 py-3 text-base font-medium text-slate-700 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
         >
           {t('action.abandon')}
@@ -147,10 +168,11 @@ export function TimerScreen({
       )}
 
       <p data-testid="today-summary" className="text-sm text-slate-600 dark:text-slate-300">
-        {t('today.summary', {
-          count: todayTotals.completedPomodoros,
-          minutes: todayTotals.focusMinutes,
-        })}
+        {hoje &&
+          t('today.summary', {
+            count: hoje.completedPomodoros,
+            minutes: hoje.focusMinutes,
+          })}
       </p>
 
       {signupCta && (

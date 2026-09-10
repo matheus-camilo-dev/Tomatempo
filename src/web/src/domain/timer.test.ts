@@ -5,6 +5,7 @@ import {
   POMODOROS_PER_LONG_BREAK,
   abandon,
   acknowledge,
+  adoptWindow,
   createIdleState,
   nextKind,
   remainingMs,
@@ -249,5 +250,42 @@ describe('abandon (REGRAS-DE-NEGOCIO §1: tempo parcial conta)', () => {
 
   it('deve recusar abandonar o que não está em andamento', () => {
     expect(() => abandon(createIdleState(), T0)).toThrow()
+  })
+})
+
+describe('adoptWindow (§3.2: quem carimba o ciclo é o servidor)', () => {
+  // A correção real é da ordem da latência: o servidor recebeu o start alguns
+  // instantes depois do clique, e o fim anda junto.
+  const janela = { startedAt: T0 + 300, endsAt: T0 + 300 + 25 * MINUTE }
+
+  it('deve passar a contar pela janela do servidor', () => {
+    const adotado = adoptWindow(runningFocus(), janela, T0)
+
+    expect(adotado.startedAt).toBe(janela.startedAt)
+    expect(adotado.endsAt).toBe(janela.endsAt)
+  })
+
+  it('deve preservar o resto do ciclo', () => {
+    const adotado = adoptWindow(runningFocus(3), janela, T0)
+
+    expect(adotado.status).toBe('running')
+    expect(adotado.kind).toBe('focus')
+    expect(adotado.completedPomodoros).toBe(3)
+  })
+
+  // Abandonar dentro da ida e volta da rede é o caso comum de quem clicou sem
+  // querer: a resposta chega para um ciclo que não existe mais.
+  it('não deve adotar nada, fora de um ciclo em andamento', () => {
+    const parado = createIdleState()
+
+    expect(adoptWindow(parado, janela, null)).toBe(parado)
+  })
+
+  // Abandonar e recomeçar dentro da ida e volta: a resposta do primeiro ciclo
+  // não pode cair sobre o segundo.
+  it('não deve adotar a janela de outro ciclo', () => {
+    const segundo = start(createIdleState(), T0 + 10 * MINUTE)
+
+    expect(adoptWindow(segundo, janela, T0)).toBe(segundo)
   })
 })
