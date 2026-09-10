@@ -102,6 +102,18 @@ function logado(dia: { completedPomodoros: number; focusMinutes: number; goal?: 
   )
 }
 
+/** O `POST /sessions/start` padrão dos cenários logados. */
+function abreSessao() {
+  return http.post('/api/sessions/start', () =>
+    HttpResponse.json({
+      sessionId: SESSAO,
+      startedAt: SERVIDOR_AGORA,
+      endsAt: '2026-09-03T12:25:00.000Z',
+      serverNow: SERVIDOR_AGORA,
+    }),
+  )
+}
+
 function iniciar(): void {
   fireEvent.click(screen.getByRole('button', { name: pt.action.startFocus }))
 }
@@ -268,6 +280,199 @@ describe('o dia da conta', () => {
     )
   })
 
+})
+
+describe('heartbeat', () => {
+  function contandoBatidas(): { total: () => number } {
+    let batidas = 0
+    server.use(
+      abreSessao(),
+      http.post(`/api/sessions/${SESSAO}/beat`, () => {
+        batidas += 1
+        return HttpResponse.json({ ok: true, serverNow: SERVIDOR_AGORA, remainingSeconds: 900 })
+      }),
+    )
+
+    return { total: () => batidas }
+  }
+
+  // 30s de intervalo contra 90s de tolerância (§3.2): duas batidas podem se
+  // perder sem que a cadeia arrebente.
+  it('deve bater a cada 30 segundos enquanto o foco corre', async () => {
+    logado({ completedPomodoros: 0, focusMinutes: 0 })
+    const batidas = contandoBatidas()
+
+    montar()
+    await assentar()
+    iniciar()
+    await assentar()
+
+    await avancar(90_000)
+
+    expect(batidas.total()).toBe(3)
+  })
+
+  // A aba em segundo plano tem o intervalo estrangulado pelo navegador. Bater
+  // na volta é o que impede a cadeia de arrebentar por isso.
+  it('deve bater ao voltar para a aba', async () => {
+    logado({ completedPomodoros: 0, focusMinutes: 0 })
+    const batidas = contandoBatidas()
+
+    montar()
+    await assentar()
+    iniciar()
+    await assentar()
+
+    const antes = batidas.total()
+    act(() => void document.dispatchEvent(new Event('visibilitychange')))
+    await assentar()
+
+    expect(batidas.total()).toBe(antes + 1)
+  })
+
+  it('não deve bater com o timer parado', async () => {
+    logado({ completedPomodoros: 0, focusMinutes: 0 })
+    const batidas = contandoBatidas()
+
+    montar()
+    await assentar()
+
+    await avancar(90_000)
+
+    expect(batidas.total()).toBe(0)
+  })
+
+  it('não deve bater durante a pausa', async () => {
+    logado({ completedPomodoros: 0, focusMinutes: 0 })
+    const batidas = contandoBatidas()
+    server.use(
+      http.post(`/api/sessions/${SESSAO}/complete`, () =>
+        HttpResponse.json({ countedMinutes: 25, completedToday: 1, goal: 4, goalMet: false }),
+      ),
+    )
+
+    montar()
+    await assentar()
+    iniciar()
+    await assentar()
+    await avancar(25 * MINUTE)
+
+    // Confirma o fim do foco e começa a pausa curta.
+    fireEvent.click(screen.getByRole('button', { name: pt.action.startShortBreak }))
+    await assentar()
+
+    const depoisDoFoco = batidas.total()
+    await avancar(90_000)
+
+    expect(batidas.total()).toBe(depoisDoFoco)
+  })
+
+  it('não deve derrubar o ciclo quando uma batida não vai', async () => {
+    logado({ completedPomodoros: 0, focusMinutes: 0 })
+    let batidas = 0
+    server.use(
+      abreSessao(),
+      http.post(`/api/sessions/${SESSAO}/beat`, () => {
+        batidas += 1
+        // Só a primeira falha: a seguinte precisa reatar.
+        if (batidas === 1) return HttpResponse.error()
+        return HttpResponse.json({ ok: true, serverNow: SERVIDOR_AGORA, remainingSeconds: 900 })
+      }),
+    )
+
+    montar()
+    await assentar()
+    iniciar()
+    await assentar()
+
+    await avancar(60_000)
+
+    expect(batidas).toBe(2)
+    expect(screen.getByRole('timer')).toHaveTextContent('24:00')
+    expect(screen.getByRole('button', { name: pt.action.abandon })).toBeInTheDocument()
+  })
+})
+
+describe('sessão perdida', () => {
+  function recusaAsBatidas(code: string) {
+    server.use(
+      abreSessao(),
+      http.post(`/api/sessions/${SESSAO}/beat`, () =>
+        HttpResponse.json({ title: 'x', status: 409, code }, { status: 409 }),
+      ),
+    )
+  }
+
+  // Critério da §5 do bloco do servidor: "abrir o timer em duas abas — a
+  // segunda assume, a primeira avisa e para de pontuar".
+  it('deve avisar e parar de pontuar, quando outra aba assume', async () => {
+    logado({ completedPomodoros: 0, focusMinutes: 0 })
+    recusaAsBatidas('session_superseded')
+
+    montar()
+    await assentar()
+    iniciar()
+    await assentar()
+    await avancar(30_000)
+
+    expect(screen.getByTestId('session-lost')).toHaveTextContent(pt.error.session_superseded)
+    expect(screen.getByRole('button', { name: pt.action.startFocus })).toBeInTheDocument()
+  })
+
+  it('deve avisar quando a sessão expirou por falta de sinal', async () => {
+    logado({ completedPomodoros: 0, focusMinutes: 0 })
+    recusaAsBatidas('session_expired')
+
+    montar()
+    await assentar()
+    iniciar()
+    await assentar()
+    await avancar(30_000)
+
+    expect(screen.getByTestId('session-lost')).toHaveTextContent(pt.error.session_expired)
+  })
+
+  it('não deve continuar batendo depois de perder a sessão', async () => {
+    logado({ completedPomodoros: 0, focusMinutes: 0 })
+    let batidas = 0
+    server.use(
+      abreSessao(),
+      http.post(`/api/sessions/${SESSAO}/beat`, () => {
+        batidas += 1
+        return HttpResponse.json(
+          { title: 'x', status: 409, code: 'session_superseded' },
+          { status: 409 },
+        )
+      }),
+    )
+
+    montar()
+    await assentar()
+    iniciar()
+    await assentar()
+    await avancar(30_000)
+
+    const naPerda = batidas
+    await avancar(2 * MINUTE)
+
+    expect(batidas).toBe(naPerda)
+  })
+
+  it('deve sumir com o aviso ao começar o ciclo seguinte', async () => {
+    logado({ completedPomodoros: 0, focusMinutes: 0 })
+    recusaAsBatidas('session_superseded')
+
+    montar()
+    await assentar()
+    iniciar()
+    await assentar()
+    await avancar(30_000)
+
+    iniciar()
+    await assentar()
+
+    expect(screen.queryByTestId('session-lost')).not.toBeInTheDocument()
+  })
 })
 
 describe('servidor fora do ar', () => {
