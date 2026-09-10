@@ -53,6 +53,7 @@ export function useSignUp() {
   return useMutation({
     mutationFn: async (input: SignUpInput) => {
       await apiFetch('/auth/register', { method: 'POST', json: input })
+      await clearOfflineQueue()
       rememberSession()
 
       return carregarConta(client)
@@ -71,6 +72,9 @@ export function useSignIn() {
   return useMutation({
     mutationFn: async (input: SignInInput) => {
       await apiFetch('/auth/login', { method: 'POST', json: input })
+      // Quem entra começa com a fila vazia: fechar a aba não passa por logout
+      // nem por 401, e a fila de quem estava aqui não sabe de quem é (§3.4).
+      await clearOfflineQueue()
       rememberSession()
 
       return carregarConta(client)

@@ -572,7 +572,7 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [x] Sair da conta descarta a fila offline junto com o resto do estado local.
 - [x] Sessão derrubada pelo 401 `unauthenticated` descarta a fila, igual ao logout; o 401 de senha errada na
       exclusão, que traz `invalid_credentials`, não descarta nada.
-- [ ] Entrar numa conta — login ou cadastro — começa com a fila vazia, mesmo sem logout anterior.
+- [x] Entrar numa conta — login ou cadastro — começa com a fila vazia, mesmo sem logout anterior.
 - [x] Excluir a conta descarta a fila junto com o resto do estado local.
 - [x] Sem pista de sessão neste navegador, a fila não drena — nem se houver item nela.
 - [x] Resposta do lote fora do contrato mantém a fila e não quebra a drenagem.
