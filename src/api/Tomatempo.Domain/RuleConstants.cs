@@ -45,6 +45,13 @@ public static class RuleConstants
     /// <summary>Folga para desencontro de relógio, não para relógio manipulado.</summary>
     public static readonly TimeSpan OfflineClockTolerance = TimeSpan.FromMinutes(2);
 
+    /// <summary>
+    /// Teto de itens por lote. Não é regra de produto: 48h de uso cabem folgado em 100
+    /// sessões, e sem teto um lote inventado vira trabalho ilimitado no servidor (§7.2/A04).
+    /// Lote maior é recusado inteiro, e não item a item — nesse tamanho o problema é o lote.
+    /// </summary>
+    public const int MaxOfflineBatchItems = 100;
+
     // --- Streak (§3.6) ------------------------------------------------------
     /// <summary>A cada tantos dias consecutivos de meta batida, +1 congelamento.</summary>
     public const int FreezeMilestoneDays = 7;

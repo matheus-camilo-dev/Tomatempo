@@ -91,6 +91,24 @@ public sealed record CompletedSessionView(int CountedMinutes, int CompletedToday
 
 public sealed record AbandonedSessionView(int CountedMinutes, bool Discarded);
 
+/// <summary>
+/// Um item do lote offline (§3.4). Aqui — e só aqui — o cliente manda início e duração: ele
+/// estava sozinho, não tem carimbo de servidor para nenhum dos dois. Por isso cada item ainda
+/// passa por janela, faixa, sobreposição, teto e idempotência antes de virar minuto, e nenhum
+/// deles vale para o ranking (§7.3.3).
+/// </summary>
+public sealed record OfflineSessionRequest(
+    string? ClientSessionId,
+    DateTimeOffset StartedAt,
+    int DurationSeconds);
+
+public sealed record OfflineBatchRequest(IReadOnlyList<OfflineSessionRequest>? Items);
+
+/// <summary>Veredito de um item. `reason` é o `code` que o cliente usa para descartar sem retry.</summary>
+public sealed record OfflineItemView(string ClientSessionId, bool Accepted, string? Reason);
+
+public sealed record OfflineBatchView(IReadOnlyList<OfflineItemView> Items);
+
 public sealed record ActiveSessionView(
     Guid SessionId,
     DateTimeOffset StartedAt,

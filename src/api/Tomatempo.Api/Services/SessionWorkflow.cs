@@ -165,6 +165,61 @@ public sealed class SessionWorkflow(TomatempoDbContext db, TimeProvider clock)
         return dia;
     }
 
+    /// <summary>
+    /// Recebe o que foi feito offline (§3.4). Devolve um veredito por item, na mesma ordem em
+    /// que chegaram — um item ruim não derruba o lote.
+    ///
+    /// Quem julga é <see cref="OfflineIntake"/>; aqui mora o estado contra o qual ele julga.
+    /// Esse estado cresce dentro do próprio lote: uma sessão aceita passa a ocupar horário,
+    /// a gastar vaga do dia e a ter id conhecido para os itens seguintes — sem isso, mandar
+    /// dezesseis vezes a mesma hora num lote só furaria sobreposição, teto e idempotência de
+    /// uma vez.
+    /// </summary>
+    public async Task<IReadOnlyList<OfflineAdmission>> SyncOfflineAsync(
+        TomatempoUser user,
+        IReadOnlyList<OfflineSession> itens,
+        CancellationToken cancellationToken)
+    {
+        var agora = clock.GetUtcNow();
+        var fuso = FusoDe(user);
+        var diasDoLote = itens.Select(i => LocalDay.Of(i.StartedAt, fuso)).Distinct().ToArray();
+
+        var ocupados = await OcupadosAsync(user.Id, agora, cancellationToken);
+        var conhecidos = await ConhecidosAsync(user.Id, itens, cancellationToken);
+        var apuradasNoDia = await ApuradasPorDiaAsync(user.Id, diasDoLote, cancellationToken);
+        var estatisticas = new Dictionary<DateOnly, DailyStatsRow>();
+
+        var vereditos = new List<OfflineAdmission>(itens.Count);
+        foreach (var item in itens)
+        {
+            var dia = LocalDay.Of(item.StartedAt, fuso);
+            var veredito = OfflineIntake.Judge(
+                item, agora, ocupados, apuradasNoDia.GetValueOrDefault(dia), conhecidos);
+
+            vereditos.Add(veredito);
+            if (!veredito.Accepted) continue;
+
+            var sessao = Registrar(user.Id, item, dia, veredito.CountedMinutes);
+            db.FocusSessions.Add(sessao);
+
+            if (!estatisticas.TryGetValue(dia, out var estatistica))
+            {
+                estatistica = await DiaAsync(user, dia, cancellationToken);
+                estatisticas[dia] = estatistica;
+            }
+
+            Somar(estatistica, sessao);
+
+            ocupados.Add(new TimeRange(item.StartedAt, item.StartedAt + item.Duration));
+            conhecidos.Add(item.ClientSessionId);
+            apuradasNoDia[dia] = apuradasNoDia.GetValueOrDefault(dia) + 1;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return vereditos;
+    }
+
     public static TimeZoneInfo FusoDe(TomatempoUser user) => TimeZoneInfo.FindSystemTimeZoneById(user.TimeZone);
 
     /// <summary>
@@ -189,13 +244,101 @@ public sealed class SessionWorkflow(TomatempoDbContext db, TimeProvider clock)
         return apuradas >= RuleConstants.MaxSessionsPerLocalDay ? 0 : minutos;
     }
 
+    /// <summary>
+    /// Sessão vinda do lote: início e fim são os que o cliente declarou, já aprovados pela
+    /// admissão. Não há heartbeat porque não havia rede, e é exatamente por isso que ela
+    /// nunca vale para o ranking — minuto de ranking exige começo e fim do servidor (§3.4).
+    /// </summary>
+    private static FocusSessionRow Registrar(
+        Guid userId,
+        OfflineSession item,
+        DateOnly dia,
+        int minutos) =>
+        new()
+        {
+            Id = Guid.CreateVersion7(),
+            UserId = userId,
+            StartedAtUtc = item.StartedAt,
+            EndedAtUtc = item.StartedAt + item.Duration,
+            LastHeartbeatAtUtc = null,
+            Status = minutos >= (int)RuleConstants.FocusDuration.TotalMinutes
+                ? SessionStatus.Completed
+                : SessionStatus.Abandoned,
+            Source = SessionSource.Offline,
+            CountedMinutes = minutos,
+            RankingEligible = false,
+            LocalDate = dia,
+            ClientSessionId = item.ClientSessionId,
+        };
+
+    /// <summary>
+    /// Horários já ocupados por sessões desta pessoa — e só dela: sobreposição é com o
+    /// próprio histórico, nunca com o de todo mundo (§7.2/A01).
+    ///
+    /// A janela é a única em que um item do lote pode cair, e existe para a consulta não
+    /// crescer com o histórico. Sessão ainda aberta ocupa o ciclo inteiro: enquanto ela não
+    /// fecha, o horário está tomado.
+    /// </summary>
+    private async Task<List<TimeRange>> OcupadosAsync(
+        Guid userId,
+        DateTimeOffset agora,
+        CancellationToken cancellationToken)
+    {
+        var desde = agora - RuleConstants.OfflineMaxAge - RuleConstants.FocusDuration;
+
+        var sessoes = await db.FocusSessions
+            .Where(f => f.UserId == userId && f.StartedAtUtc >= desde)
+            .Select(f => new { f.StartedAtUtc, f.EndedAtUtc })
+            .ToListAsync(cancellationToken);
+
+        return sessoes
+            .Select(f => new TimeRange(
+                f.StartedAtUtc, f.EndedAtUtc ?? f.StartedAtUtc + RuleConstants.FocusDuration))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Quais ids do lote esta pessoa já mandou antes. Pergunta só pelos ids que chegaram, e
+    /// não pelo histórico inteiro: é o índice único que responde (§2).
+    /// </summary>
+    private async Task<HashSet<string>> ConhecidosAsync(
+        Guid userId,
+        IReadOnlyList<OfflineSession> itens,
+        CancellationToken cancellationToken)
+    {
+        var ids = itens.Select(i => i.ClientSessionId).Distinct().ToArray();
+
+        var jaVistos = await db.FocusSessions
+            .Where(f => f.UserId == userId && f.ClientSessionId != null && ids.Contains(f.ClientSessionId))
+            .Select(f => f.ClientSessionId!)
+            .ToListAsync(cancellationToken);
+
+        return [.. jaVistos];
+    }
+
+    /// <summary>Quantas sessões já renderam minuto em cada dia local tocado pelo lote (§3.2).</summary>
+    private async Task<Dictionary<DateOnly, int>> ApuradasPorDiaAsync(
+        Guid userId,
+        IReadOnlyList<DateOnly> dias,
+        CancellationToken cancellationToken)
+    {
+        var contagens = await db.FocusSessions
+            .Where(f => f.UserId == userId && dias.Contains(f.LocalDate) && f.CountedMinutes > 0)
+            .GroupBy(f => f.LocalDate)
+            .Select(g => new { Dia = g.Key, Total = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        return contagens.ToDictionary(c => c.Dia, c => c.Total);
+    }
+
     private async Task SomarNoDiaAsync(
         TomatempoUser user,
         FocusSessionRow sessao,
-        CancellationToken cancellationToken)
-    {
-        var dia = await DiaAsync(user, sessao.LocalDate, cancellationToken);
+        CancellationToken cancellationToken) =>
+        Somar(await DiaAsync(user, sessao.LocalDate, cancellationToken), sessao);
 
+    private static void Somar(DailyStatsRow dia, FocusSessionRow sessao)
+    {
         // Dia já selado não muda mais (§3.6): sessão que chega depois do fechamento pertence
         // ao histórico, não à streak que já foi decidida.
         if (dia.ClosedAt is not null) return;

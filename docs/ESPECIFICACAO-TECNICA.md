@@ -493,9 +493,9 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [x] Dia sem meta batida consome 1 freeze e mantém a streak; sem freeze, zera.
 - [x] 7 dias consecutivos de meta batida creditam +1 freeze; dia coberto por freeze reseta o contador do marco.
 - [x] Teto de 5 respeitado, com `CapOverflow` registrado.
-- [ ] Modo avião: 3 pomodoros contam para meta/streak ao reconectar e nenhum minuto vai para o ranking.
-- [ ] Lote acima de 100 itens é recusado inteiro, com `invalid_request`.
-- [ ] Reenviar o mesmo lote offline não duplica nada.
+- [x] Modo avião: 3 pomodoros contam para meta/streak ao reconectar e nenhum minuto vai para o ranking.
+- [x] Lote acima de 100 itens é recusado inteiro, com `invalid_request`.
+- [x] Reenviar o mesmo lote offline não duplica nada.
 - [x] Conta nova criada após uso anônimo começa zerada.
 - [x] Suíte de domínio cobre virada de dia, horário de verão, offsets :30 e :45 e virada de ano.
 

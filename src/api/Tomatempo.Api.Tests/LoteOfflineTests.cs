@@ -38,7 +38,7 @@ public sealed class LoteOfflineTests(PostgresFixture postgres) : ApiFacts(postgr
     public async Task Lote_DeveAceitarTresPomodorosDoModoAviao()
     {
         // Arrange — três sessões cheias, em horários que não se encostam.
-        var conta = await CadastrarAsync(meta: 3);
+        var conta = await CadastrarAsync(meta: 2);
         var itens = new[]
         {
             Item(atras: TimeSpan.FromHours(5)),
@@ -58,7 +58,7 @@ public sealed class LoteOfflineTests(PostgresFixture postgres) : ApiFacts(postgr
     public async Task Lote_DeveContarParaAMetaEParaAStreak()
     {
         // Arrange
-        var conta = await CadastrarAsync(meta: 3);
+        var conta = await CadastrarAsync(meta: 2);
 
         // Act
         await EnviarAsync(
@@ -77,7 +77,7 @@ public sealed class LoteOfflineTests(PostgresFixture postgres) : ApiFacts(postgr
     public async Task Lote_NaoDeveMandarMinutoAlgumParaORanking()
     {
         // Arrange — minuto de ranking exige começo e fim validados pelo servidor (§3.4).
-        var conta = await CadastrarAsync(meta: 3);
+        var conta = await CadastrarAsync(meta: 2);
 
         // Act
         await EnviarAsync(conta.Client, Item(atras: TimeSpan.FromHours(5)));
@@ -93,7 +93,7 @@ public sealed class LoteOfflineTests(PostgresFixture postgres) : ApiFacts(postgr
     {
         // Arrange — a rede caindo no meio do envio é o caso comum: o cliente reenvia sem saber
         // o que passou, e o reenvio precisa ser no-op (§3.4).
-        var conta = await CadastrarAsync(meta: 3);
+        var conta = await CadastrarAsync(meta: 2);
         var itens = new[] { Item(atras: TimeSpan.FromHours(5)), Item(atras: TimeSpan.FromHours(4)) };
         await EnviarAsync(conta.Client, itens);
 

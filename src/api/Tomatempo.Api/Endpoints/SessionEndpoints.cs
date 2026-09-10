@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Tomatempo.Api.Services;
 using Tomatempo.Domain;
+using Tomatempo.Domain.Sessions;
 using Tomatempo.Infrastructure.Entities;
 
 namespace Tomatempo.Api.Endpoints;
@@ -23,6 +24,7 @@ public static class SessionEndpoints
         grupo.MapPost("/{id:guid}/beat", BaterAsync).WithMetadata(new HeartbeatEndpoint());
         grupo.MapPost("/{id:guid}/complete", ConcluirAsync);
         grupo.MapPost("/{id:guid}/abandon", AbandonarAsync);
+        grupo.MapPost("/offline-batch", SincronizarAsync);
         grupo.MapGet("/active", AtivaAsync);
     }
 
@@ -102,6 +104,75 @@ public static class SessionEndpoints
         return Results.Ok(new AbandonedSessionView(
             sessao.CountedMinutes, sessao.CountedMinutes == 0));
     }
+
+    private static async Task<IResult> SincronizarAsync(
+        OfflineBatchRequest? request,
+        ClaimsPrincipal principal,
+        UserManager<TomatempoUser> users,
+        SessionWorkflow sessions,
+        CancellationToken cancellationToken)
+    {
+        var user = (await users.GetUserAsync(principal))!;
+
+        if (user.OnboardingCompletedAt is null)
+        {
+            return Problems.Conflict(Problems.OnboardingRequired, "Conta ainda não foi completada.");
+        }
+
+        if (!TentarLerLote(request, out var itens))
+        {
+            return Problems.BadRequest(Problems.InvalidRequest, "Lote offline inválido.");
+        }
+
+        var vereditos = await sessions.SyncOfflineAsync(user, itens, cancellationToken);
+
+        return Results.Ok(new OfflineBatchView(
+            [.. itens.Zip(vereditos, (item, veredito) => new OfflineItemView(
+                item.ClientSessionId,
+                veredito.Accepted,
+                veredito.Rejection is { } recusa ? MotivoDe(recusa) : null))]));
+    }
+
+    /// <summary>
+    /// A parte do lote que é forma, não regra: tamanho e tipo de cada campo (§7.2). O que não
+    /// passa daqui é payload malformado — recusa o lote inteiro, e não vira veredito de
+    /// sessão, porque o problema não é a sessão.
+    /// </summary>
+    private static bool TentarLerLote(OfflineBatchRequest? request, out IReadOnlyList<OfflineSession> itens)
+    {
+        itens = [];
+
+        if (request?.Items is not { } entrada || entrada.Count > RuleConstants.MaxOfflineBatchItems)
+        {
+            return false;
+        }
+
+        var lidos = new List<OfflineSession>(entrada.Count);
+        foreach (var item in entrada)
+        {
+            // `client_session_id` é uuid (§2). Guardar sempre a forma canônica é o que impede
+            // o mesmo id, escrito de outro jeito, de escapar do índice único e duplicar.
+            if (!Guid.TryParse(item.ClientSessionId, out var id)) return false;
+
+            lidos.Add(new OfflineSession(
+                id.ToString(), item.StartedAt, TimeSpan.FromSeconds(item.DurationSeconds)));
+        }
+
+        itens = lidos;
+
+        return true;
+    }
+
+    /// <summary>Motivo estável por item; o cliente descarta por ele, sem tentar de novo (§3.4).</summary>
+    private static string MotivoDe(OfflineRejection recusa) => recusa switch
+    {
+        OfflineRejection.TooOld => "too_old",
+        OfflineRejection.InFuture => "in_future",
+        OfflineRejection.InvalidDuration => "invalid_duration",
+        OfflineRejection.Overlaps => "overlaps",
+        OfflineRejection.DailyCapReached => "daily_cap_reached",
+        _ => "duplicate",
+    };
 
     private static async Task<IResult> AtivaAsync(
         ClaimsPrincipal principal,
