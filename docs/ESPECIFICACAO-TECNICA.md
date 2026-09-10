@@ -647,6 +647,13 @@ Limites que valem como regra:
   simulado (timer, expiração, virada de dia), `fireEvent` é a escolha; onde a fidelidade da sequência de eventos
   importa de verdade — formulário, digitação, navegação por teclado, hover —, `user-event` continua obrigatório.
   Revisitar quando alguma das duas bibliotecas resolver a incompatibilidade.
+- **MSW com relógio falso exige `toFake` restrito e flush explícito.** `vi.useFakeTimers()` sem argumento também
+  falseia `queueMicrotask`, `setImmediate` e `process.nextTick`, e o interceptador do MSW depende deles: a
+  resposta simplesmente nunca chega e o caso estoura no timeout do runner. Instalar com
+  `toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date']` resolve. Pelo mesmo motivo,
+  `waitFor` não serve para esperar a rede com o relógio parado — quem faz a espera é
+  `await act(async () => { await vi.advanceTimersByTimeAsync(0) })`, que gira o laço de eventos uma vez e deixa
+  o React repintar.
 
 ### 6.5 Convenções
 

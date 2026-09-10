@@ -1,0 +1,343 @@
+import { QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { HttpResponse, http } from 'msw'
+import { act } from 'react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createTimerStore, type TimerStore } from '../hooks/useTimerStore'
+import { createQueryClient } from '../lib/queryClient'
+import { rememberSession } from '../lib/sessionHint'
+import { accountFixture } from '../test/fixtures'
+import { pt } from '../test/i18nText'
+import { memoryStorage } from '../test/memoryStorage'
+import { server } from '../test/server'
+import { TimerScreen } from './TimerScreen'
+
+/**
+ * O timer de quem está logado (§3.2, §3.3). Critérios da §5: "visitante anônimo
+ * continua sem chamada alguma de sessão", "iniciar o ciclo com sessão de pé abre
+ * a sessão no servidor, e o tempo restante exibido passa a vir dos instantes que
+ * o servidor carimbou", "concluir o ciclo chama `complete`, e o dia mostrado
+ * passa a ser o que a API devolveu", "abandonar chama `abandon` e mostra o
+ * parcial que o servidor creditou — inclusive o zero de quem parou antes dos 5
+ * minutos" e "o dia de quem está logado vem de `GET /stats/today` [...] e o
+ * histórico local nunca é somado a ele".
+ *
+ * Os números que o servidor devolve aqui são de propósito diferentes dos que a
+ * conta local daria: é assim que o teste prova de qual das duas fontes a tela
+ * está lendo.
+ */
+
+const MINUTE = 60_000
+
+/** Meio-dia UTC no servidor; a máquina do teste começa no mesmo instante. */
+const SERVIDOR_AGORA = '2026-09-03T12:00:00.000Z'
+const SESSAO = '0199b0e0-0000-7000-8000-000000000000'
+
+/**
+ * `toFake` restrito a timers e `Date`: com `queueMicrotask` e `setImmediate`
+ * falsos, a resposta do MSW nunca chega e o teste trava. Pelo mesmo motivo o
+ * flush é `advanceTimersByTimeAsync` dentro de `act`, e não `waitFor` (§6.4).
+ */
+beforeEach(() => {
+  vi.useFakeTimers({
+    toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'],
+  })
+  vi.setSystemTime(Date.parse(SERVIDOR_AGORA))
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
+
+/** Deixa a rede responder e o React repintar. */
+async function assentar(): Promise<void> {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0)
+  })
+}
+
+/** Avança o relógio deixando o tique do timer rodar, e então assenta a rede. */
+async function avancar(ms: number): Promise<void> {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(ms)
+  })
+  await assentar()
+}
+
+function montar(store: TimerStore = createTimerStore({ storage: memoryStorage() })): TimerStore {
+  render(
+    <QueryClientProvider client={createQueryClient()}>
+      <TimerScreen store={store} />
+    </QueryClientProvider>,
+  )
+
+  return store
+}
+
+/** Conta de pé, com o dia que o servidor apurou. */
+function logado(dia: { completedPomodoros: number; focusMinutes: number; goal?: number }): void {
+  rememberSession(localStorage)
+  server.use(
+    http.get('/api/me', () => HttpResponse.json(accountFixture())),
+    http.get('/api/stats/today', () =>
+      HttpResponse.json({
+        localDate: '2026-09-03',
+        completedPomodoros: dia.completedPomodoros,
+        focusMinutes: dia.focusMinutes,
+        rankingMinutes: dia.focusMinutes,
+        goal: dia.goal ?? 4,
+        goalMet: false,
+      }),
+    ),
+  )
+}
+
+function iniciar(): void {
+  fireEvent.click(screen.getByRole('button', { name: pt.action.startFocus }))
+}
+
+function abandonar(): void {
+  fireEvent.click(screen.getByRole('button', { name: pt.action.abandon }))
+}
+
+describe('visitante anônimo', () => {
+  it('não deve tocar a API em ciclo algum', async () => {
+    const chamadas: string[] = []
+    server.use(
+      http.all('/api/*', ({ request }) => {
+        chamadas.push(new URL(request.url).pathname)
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+
+    montar()
+
+    iniciar()
+    await avancar(3 * MINUTE)
+    abandonar()
+    await assentar()
+
+    iniciar()
+    await avancar(25 * MINUTE)
+
+    expect(chamadas).toEqual([])
+  })
+})
+
+describe('sessão no servidor', () => {
+  it('deve abrir a sessão ao iniciar o foco', async () => {
+    logado({ completedPomodoros: 0, focusMinutes: 0 })
+    let abriu = false
+    server.use(
+      http.post('/api/sessions/start', () => {
+        abriu = true
+        return HttpResponse.json({
+          sessionId: SESSAO,
+          startedAt: SERVIDOR_AGORA,
+          endsAt: '2026-09-03T12:25:00.000Z',
+          serverNow: SERVIDOR_AGORA,
+        })
+      }),
+    )
+
+    montar()
+    await assentar()
+
+    iniciar()
+    await assentar()
+
+    expect(abriu).toBe(true)
+  })
+
+  // Adiantar o relógio da máquina não pode encurtar o ciclo (§3.2): quem manda
+  // no fim é o carimbo do servidor.
+  it('deve contar pelo relógio do servidor, e não pelo da máquina', async () => {
+    logado({ completedPomodoros: 0, focusMinutes: 0 })
+    let abriu = false
+    server.use(
+      http.post('/api/sessions/start', () => {
+        abriu = true
+        return HttpResponse.json({
+          sessionId: SESSAO,
+          startedAt: SERVIDOR_AGORA,
+          endsAt: '2026-09-03T12:25:00.000Z',
+          serverNow: SERVIDOR_AGORA,
+        })
+      }),
+    )
+
+    // A máquina acha que já são 12h10 — dez minutos à frente do servidor.
+    vi.setSystemTime(Date.parse('2026-09-03T12:10:00.000Z'))
+    montar()
+    await assentar()
+
+    iniciar()
+    await assentar()
+
+    // Sem o desconto, ler `endsAt` no relógio da máquina daria 15:00.
+    expect(abriu).toBe(true)
+    expect(screen.getByRole('timer')).toHaveTextContent('25:00')
+
+    await avancar(5 * MINUTE)
+    expect(screen.getByRole('timer')).toHaveTextContent('20:00')
+  })
+})
+
+describe('o dia da conta', () => {
+  it('deve vir do servidor, e não da contagem local', async () => {
+    logado({ completedPomodoros: 7, focusMinutes: 180 })
+
+    // Histórico local com números próprios: se aparecerem na tela, ou se forem
+    // somados aos do servidor, a fonte está errada.
+    montar(
+      createTimerStore({
+        storage: memoryStorage({
+          'tomatempo:timer:v1': JSON.stringify({
+            timer: { kind: 'focus', status: 'idle', startedAt: null, endsAt: null, completedPomodoros: 2 },
+            log: { date: '2026-09-03', focusMinutes: 50, completedPomodoros: 2 },
+            runningDateKey: '2026-09-03',
+          }),
+        }),
+      }),
+    )
+    await assentar()
+
+    expect(screen.getByTestId('today-summary')).toHaveTextContent('7 pomodoros')
+    expect(screen.getByTestId('today-summary')).toHaveTextContent('180 min')
+  })
+
+  it('deve continuar sendo o local, para quem não tem conta', async () => {
+    montar(
+      createTimerStore({
+        storage: memoryStorage({
+          'tomatempo:timer:v1': JSON.stringify({
+            timer: { kind: 'focus', status: 'idle', startedAt: null, endsAt: null, completedPomodoros: 2 },
+            log: { date: '2026-09-03', focusMinutes: 50, completedPomodoros: 2 },
+            runningDateKey: '2026-09-03',
+          }),
+        }),
+      }),
+    )
+    await assentar()
+
+    expect(screen.getByTestId('today-summary')).toHaveTextContent('2 pomodoros')
+    expect(screen.getByTestId('today-summary')).toHaveTextContent('50 min')
+  })
+})
+
+describe('fim do ciclo', () => {
+  it('deve chamar complete e mostrar o dia que a API devolveu', async () => {
+    logado({ completedPomodoros: 0, focusMinutes: 0 })
+    let concluiu = false
+    server.use(
+      http.post('/api/sessions/start', () =>
+        HttpResponse.json({
+          sessionId: SESSAO,
+          startedAt: SERVIDOR_AGORA,
+          endsAt: '2026-09-03T12:25:00.000Z',
+          serverNow: SERVIDOR_AGORA,
+        }),
+      ),
+      http.post(`/api/sessions/${SESSAO}/complete`, () => {
+        concluiu = true
+        return HttpResponse.json({ countedMinutes: 25, completedToday: 7, goal: 4, goalMet: true })
+      }),
+      // O dia relido depois de concluir: números que a conta local não daria.
+      http.get('/api/stats/today', () =>
+        HttpResponse.json({
+          localDate: '2026-09-03',
+          completedPomodoros: 7,
+          focusMinutes: 180,
+          rankingMinutes: 180,
+          goal: 4,
+          goalMet: true,
+        }),
+      ),
+    )
+
+    montar()
+    await assentar()
+
+    iniciar()
+    await assentar()
+    await avancar(25 * MINUTE)
+
+    expect(concluiu).toBe(true)
+    expect(screen.getByTestId('today-summary')).toHaveTextContent('7 pomodoros')
+    expect(screen.getByTestId('today-summary')).toHaveTextContent('180 min')
+  })
+
+  it('deve chamar abandon e mostrar o parcial que o servidor creditou', async () => {
+    logado({ completedPomodoros: 0, focusMinutes: 0 })
+    let abandonou = false
+    server.use(
+      http.post('/api/sessions/start', () =>
+        HttpResponse.json({
+          sessionId: SESSAO,
+          startedAt: SERVIDOR_AGORA,
+          endsAt: '2026-09-03T12:25:00.000Z',
+          serverNow: SERVIDOR_AGORA,
+        }),
+      ),
+      http.post(`/api/sessions/${SESSAO}/abandon`, () => {
+        abandonou = true
+        return HttpResponse.json({ countedMinutes: 18, discarded: false })
+      }),
+      // 18, e não os 20 que o relógio local daria: o servidor truncou no último
+      // heartbeat, e é o número dele que vale (§3.2).
+      http.get('/api/stats/today', () =>
+        HttpResponse.json({
+          localDate: '2026-09-03',
+          completedPomodoros: 0,
+          focusMinutes: 18,
+          rankingMinutes: 18,
+          goal: 4,
+          goalMet: false,
+        }),
+      ),
+    )
+
+    montar()
+    await assentar()
+
+    iniciar()
+    await assentar()
+    await avancar(20 * MINUTE)
+    abandonar()
+    await assentar()
+
+    expect(abandonou).toBe(true)
+    expect(screen.getByTestId('today-summary')).toHaveTextContent('18 min')
+  })
+
+  it('deve mostrar o zero do servidor, quando o parcial não chegou aos 5 minutos', async () => {
+    logado({ completedPomodoros: 0, focusMinutes: 0 })
+    let abandonou = false
+    server.use(
+      http.post('/api/sessions/start', () =>
+        HttpResponse.json({
+          sessionId: SESSAO,
+          startedAt: SERVIDOR_AGORA,
+          endsAt: '2026-09-03T12:25:00.000Z',
+          serverNow: SERVIDOR_AGORA,
+        }),
+      ),
+      http.post(`/api/sessions/${SESSAO}/abandon`, () => {
+        abandonou = true
+        return HttpResponse.json({ countedMinutes: 0, discarded: true })
+      }),
+    )
+
+    montar()
+    await assentar()
+
+    iniciar()
+    await assentar()
+    await avancar(3 * MINUTE)
+    abandonar()
+    await assentar()
+
+    expect(abandonou).toBe(true)
+    expect(screen.getByTestId('today-summary')).toHaveTextContent('0 min')
+  })
+})
