@@ -13,6 +13,12 @@ export default defineConfig({
   server: {
     proxy: { '/api': { target: API_TARGET, changeOrigin: false } },
   },
+  // O `preview` serve o bundle de produção, e é contra ele que o E2E roda. Sem
+  // o mesmo proxy do dev, a API ficaria em outra origem e o cookie `SameSite=Lax`
+  // não viajaria — o E2E da fase 2 não teria como estar logado (§1.1).
+  preview: {
+    proxy: { '/api': { target: API_TARGET, changeOrigin: false } },
+  },
   plugins: [
     react(),
     tailwindcss(),

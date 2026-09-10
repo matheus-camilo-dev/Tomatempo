@@ -76,7 +76,7 @@ server-validated ranking minutes · no auto-chain · ≥5min partials · next-da
 
 ## Stack (decided 2026-09-02)
 
-React 19 + Vite + TS SPA (Tailwind + shadcn/ui, i18n pt-BR/en) · ASP.NET Core .NET 10 Minimal APIs + Identity + Google OAuth · PostgreSQL + EF Core · monorepo src/api + src/web · Docker compose locally, cloud TBD. Delivery in 3 phases: anonymous timer → account/goal/streak → ranking/profile.
+Stack and monorepo layout: read the manifests (`src/web/package.json`, `src/api/**/*.csproj`, `docker-compose.yml`). Cloud host still TBD. Delivery in 3 phases: anonymous timer → account/goal/streak → ranking/profile.
 
 ## Open decisions
 

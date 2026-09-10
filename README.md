@@ -42,7 +42,8 @@ npm run dev            # servidor de desenvolvimento
 npm test               # suíte completa
 npm run test:watch     # modo observador
 npm run test:coverage  # com cobertura (gate de 90% no domínio)
-npm run test:e2e       # E2E em Chromium, contra o build de produção
+npm run test:e2e       # E2E em Chromium, contra o build de produção (só o front)
+npm run test:e2e:api   # E2E da fase 2: conta e ciclo logado, contra a API e o Postgres
 npm run typecheck      # TypeScript strict
 npm run lint           # oxlint
 npm run build          # build de produção
@@ -64,14 +65,29 @@ Três regras não negociáveis, detalhadas na especificação técnica:
 **Fase 1 completa**: timer 25/5/15 sem emenda automática, histórico local do dia, alarme e notificação,
 tema claro/escuro, português e inglês, e PWA instalável que abre offline.
 
-Fases 2 e 3 — conta, meta diária, sequência de dias, ranking semanal e perfil público — descritas na
-especificação técnica, §5.
+**Fase 2 completa**: conta com e-mail/senha e Google, confirmação de e-mail, meta diária com efeito no dia
+seguinte, sequência de dias com congelamentos, sessões de foco validadas no servidor e fila offline que
+sobe o que foi cumprido sem rede.
+
+Fase 3 — ranking semanal, perfil público, conquistas e estatísticas pessoais — descrita na especificação
+técnica, §5.
 
 Antes do primeiro `npm run test:e2e`, instale o navegador uma vez:
 
 ```bash
 npx playwright install chromium
 ```
+
+O E2E da fase 2 conversa com a API de verdade, então ele precisa do banco e do captador de e-mail de pé.
+O Playwright sobe a API e o build do front sozinho; o resto é uma linha:
+
+```bash
+docker compose up -d postgres mailpit
+npm run test:e2e:api
+```
+
+Ele usa o banco `tomatempo_e2e`, criado na subida pela migração e separado do banco de desenvolvimento —
+a suíte cria contas a cada caso e não suja aquele em que você trabalha.
 
 ## Licença
 

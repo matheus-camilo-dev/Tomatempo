@@ -526,7 +526,9 @@ fechamento diário, streak, congelamentos com ledger e tela de preferências da 
 - [x] Nenhuma resposta traz o cabeçalho `Server`.
 - [x] O fluxo do Google está configurado com PKCE.
 - [x] Fechar a aba no minuto 20 credita exatamente 20 minutos; fechar no minuto 3 credita 0.
-- [x] Abrir o timer em duas abas: a segunda assume, a primeira avisa e para de pontuar.
+- [x] Começar um ciclo numa segunda aba: a segunda assume, a primeira avisa e para de pontuar. Só **abrir** a
+      segunda aba não toma sessão de ninguém — ela mostra o mesmo ciclo, recuperado pelo `GET /sessions/active`
+      (§3.2).
 - [x] Manipular o relógio do sistema não altera minuto algum.
 - [x] Baixar a meta às 23h não salva a streak do dia; a nova meta aparece só amanhã.
 - [x] Dia sem meta batida consome 1 freeze e mantém a streak; sem freeze, zera.
@@ -680,6 +682,15 @@ proposta. Nunca um "ajustei o teste" enterrado no meio de um relatório de imple
 | Lógica de front | `src/web/**/*.test.ts` | **Sim** | Store do timer, fila offline, cálculo de restante, formatação |
 | Componente | `src/web/**/*.test.tsx` | **Sim** | Renderização e interação do que a feature entrega |
 | E2E | `src/web/e2e` | Não | Fluxos ponta a ponta; escritos depois, a partir da fase 2 |
+
+O E2E tem duas configurações, e a divisão não é arrumação: `playwright.config.ts` roda só com o front, e é
+por isso que a suíte da fase 1 é rápida e não depende de banco; `playwright.api.config.ts` sobe a API contra
+um Postgres de verdade (`tomatempo_e2e`) e o mailpit, e é onde ficam os fluxos que só existem com servidor —
+cookie de sessão, recuperação do ciclo, fila offline sendo creditada, sessão única entre abas.
+
+Nesses casos o relógio falso do navegador (`page.clock`) não é conveniência: ele **é** o cenário. O servidor
+conta pelo relógio dele, então adiantar a máquina em 6 minutos e ver o dia continuar em zero é a prova de que
+o minuto não sai do cliente; e cumprir 25 minutos offline em um pulo é o que exercita a fila de verdade.
 
 ### 6.4 Ferramentas e limites de uso
 
