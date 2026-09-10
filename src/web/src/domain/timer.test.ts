@@ -8,6 +8,7 @@ import {
   adoptWindow,
   createIdleState,
   nextKind,
+  resumeFocus,
   remainingMs,
   start,
   tick,
@@ -287,5 +288,53 @@ describe('adoptWindow (§3.2: quem carimba o ciclo é o servidor)', () => {
     const segundo = start(createIdleState(), T0 + 10 * MINUTE)
 
     expect(adoptWindow(segundo, janela, T0)).toBe(segundo)
+  })
+})
+
+/**
+ * Recuperar o foco que o servidor diz estar correndo (§3.2).
+ *
+ * Diferente de `adoptWindow`: aqui não há ciclo local que peça a janela — ela
+ * chega porque a tela abriu e o servidor respondeu que há foco em andamento.
+ */
+describe('resumeFocus (§3.2: o ciclo que o servidor diz estar correndo)', () => {
+  const janela = { startedAt: T0 - 10 * MINUTE, endsAt: T0 + 15 * MINUTE }
+
+  it('deve retomar o foco a partir do ocioso', () => {
+    const retomado = resumeFocus(createIdleState(), janela)
+
+    expect(retomado.status).toBe('running')
+    expect(retomado.kind).toBe('focus')
+    expect(retomado.startedAt).toBe(janela.startedAt)
+    expect(retomado.endsAt).toBe(janela.endsAt)
+  })
+
+  it('deve preservar os pomodoros já concluídos', () => {
+    expect(resumeFocus(createIdleState(5), janela).completedPomodoros).toBe(5)
+  })
+
+  // O caso comum: recarregar a aba no meio do foco. O ciclo local continua,
+  // passando a contar pelos instantes que o servidor carimbou.
+  it('deve trocar a janela do foco que já estava correndo', () => {
+    const retomado = resumeFocus(runningFocus(), janela)
+
+    expect(retomado.startedAt).toBe(janela.startedAt)
+    expect(retomado.endsAt).toBe(janela.endsAt)
+  })
+
+  // A pausa não tem sessão no servidor (§2), e a aba que está de fato em foco
+  // continua batendo por ela: interromper a pausa de alguém aqui seria só dano.
+  it('não deve interromper a pausa em andamento', () => {
+    const pausa = start({ ...createIdleState(1), kind: 'shortBreak' }, T0)
+
+    expect(resumeFocus(pausa, janela)).toBe(pausa)
+  })
+
+  // Ciclo encerrado esperando confirmação já foi fechado ou enfileirado; a
+  // sessão que o servidor ainda mostra é a que o varredor vai limpar.
+  it('não deve mexer no ciclo que já terminou', () => {
+    const terminado = tick(start(createIdleState(), T0), T0 + CYCLE_DURATION_MS.focus)
+
+    expect(resumeFocus(terminado, janela)).toBe(terminado)
   })
 })
