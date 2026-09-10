@@ -54,6 +54,13 @@ export const POMODOROS_PER_LONG_BREAK = 4
 /** Parcial abaixo disso é descartado inteiro. REGRAS-DE-NEGOCIO §1. */
 export const MIN_PARTIAL_MINUTES = 5
 
+/**
+ * Frequência do batimento que prova presença ao servidor. Espelha
+ * `RuleConstants.HeartbeatInterval` (§3.2): o servidor tolera 90s de buraco,
+ * então 30s deixa duas batidas se perderem sem a cadeia arrebentar.
+ */
+export const HEARTBEAT_INTERVAL_MS = 30_000
+
 export function createIdleState(completedPomodoros = 0): TimerState {
   return {
     kind: 'focus',

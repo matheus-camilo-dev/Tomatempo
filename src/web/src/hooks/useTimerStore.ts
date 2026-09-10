@@ -37,6 +37,12 @@ export interface TimerStoreState {
   start(): void
   /** Passa a contar pela janela do servidor, se o ciclo ainda for o mesmo. */
   adoptWindow(window: LocalWindow, expectedStartedAt: number | null): void
+  /**
+   * Volta ao ocioso sem creditar nada. É o desfecho de quem perdeu a sessão
+   * para outra aba: o parcial já foi apurado lá, e creditar de novo aqui o
+   * contaria duas vezes (§3.3).
+   */
+  stop(): void
   sync(): void
   acknowledge(): void
   abandon(): void
@@ -110,6 +116,14 @@ export function createTimerStore(options: TimerStoreOptions = {}): TimerStore {
         })
       },
 
+      stop() {
+        const at = Date.now()
+        const state = get()
+        const timer = createIdleState(state.timer.completedPomodoros)
+
+        commit({ ...state, timer, nowMs: at, remainingMs: remainingOf(timer, at) })
+      },
+
       adoptWindow(window, expectedStartedAt) {
         const state = get()
         const timer = adopt(state.timer, window, expectedStartedAt)
@@ -164,7 +178,7 @@ export function createTimerStore(options: TimerStoreOptions = {}): TimerStore {
  */
 function restore(storage: Storage | null, at: number): Omit<
   TimerStoreState,
-  'start' | 'sync' | 'acknowledge' | 'abandon' | 'adoptWindow'
+  'start' | 'sync' | 'acknowledge' | 'abandon' | 'adoptWindow' | 'stop'
 > {
   const persisted = readPersisted(storage)
   const fresh = {

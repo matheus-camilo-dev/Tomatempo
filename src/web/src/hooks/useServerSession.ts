@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { apiFetch } from '../lib/api'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { HEARTBEAT_INTERVAL_MS } from '../domain/timer'
+import { ApiError, apiFetch } from '../lib/api'
 import { TODAY_QUERY_KEY } from '../lib/queryClient'
 import { toLocalWindow, type LocalWindow, type StartedSession, type TodayStats } from '../lib/serverSession'
 import { useAccount } from './useAccount'
@@ -20,7 +21,15 @@ export interface UseServerSessionResult {
   openFocus(): Promise<LocalWindow | null>
   /** Encerra a sessão aberta por abandono. Sem sessão aberta, é no-op. */
   abandonFocus(): void
+  /** `code` do motivo, quando o servidor tirou a sessão desta aba; senão `null`. */
+  readonly lostSession: string | null
 }
+
+/**
+ * Motivos que tiram a sessão desta aba para sempre (§3.3, §3.2). Insistir neles
+ * é bater numa sessão que não é mais nossa — e a de verdade está em outra aba.
+ */
+const PERDAS = ['session_superseded', 'session_expired', 'session_closed']
 
 /**
  * A ponte entre o timer da tela e a sessão validada no servidor (§3.2).
@@ -58,6 +67,8 @@ export function useServerSession(store: TimerStore): UseServerSessionResult {
    */
   const sessao = useRef<string | null>(null)
 
+  const [perda, setPerda] = useState<string | null>(null)
+
   const releerODia = useCallback(
     () => client.invalidateQueries({ queryKey: TODAY_QUERY_KEY }),
     [client],
@@ -84,9 +95,50 @@ export function useServerSession(store: TimerStore): UseServerSessionResult {
     [releerODia],
   )
 
+  /**
+   * Prova de presença (§3.2). Falha de rede não é tratada: a batida seguinte
+   * reata, e é para isso que o servidor tolera 90s de buraco. Já o 409 é
+   * definitivo — a sessão saiu desta aba e o ciclo daqui para de pontuar.
+   */
+  const bater = useCallback(async () => {
+    const id = sessao.current
+    if (id === null) return
+
+    try {
+      await apiFetch(`/sessions/${id}/beat`, { method: 'POST' })
+    } catch (erro) {
+      if (!(erro instanceof ApiError) || !PERDAS.includes(erro.code)) return
+
+      sessao.current = null
+      setPerda(erro.code)
+
+      // Para sem creditar: o parcial deste ciclo já foi apurado por quem
+      // assumiu, e creditar de novo aqui o contaria duas vezes (§3.3).
+      store.getState().stop()
+      await releerODia()
+    }
+  }, [store, releerODia])
+
+  useEffect(() => {
+    const intervalo = setInterval(() => void bater(), HEARTBEAT_INTERVAL_MS)
+
+    // O navegador estrangula o intervalo na aba em segundo plano, e a cadeia
+    // arrebentaria por isso. Bater na volta é o que a mantém inteira.
+    const naVolta = () => void bater()
+    document.addEventListener('visibilitychange', naVolta)
+
+    return () => {
+      clearInterval(intervalo)
+      document.removeEventListener('visibilitychange', naVolta)
+    }
+  }, [bater])
+
   const openFocus = useCallback(async (): Promise<LocalWindow | null> => {
     // Pausa não tem sessão no servidor: `focus_sessions` só guarda foco (§2).
     if (!ativo || store.getState().timer.kind !== 'focus') return null
+
+    // Ciclo novo, aviso velho fora da tela.
+    setPerda(null)
 
     try {
       const aberta = await apiFetch<StartedSession>('/sessions/start', {
@@ -125,7 +177,8 @@ export function useServerSession(store: TimerStore): UseServerSessionResult {
       today: ativo ? (hoje.data ?? null) : null,
       openFocus,
       abandonFocus,
+      lostSession: perda,
     }),
-    [comConta, ativo, hoje.data, openFocus, abandonFocus],
+    [comConta, ativo, hoje.data, openFocus, abandonFocus, perda],
   )
 }

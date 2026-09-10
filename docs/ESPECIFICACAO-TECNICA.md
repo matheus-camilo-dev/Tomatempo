@@ -489,7 +489,7 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [x] Nenhuma resposta traz o cabeçalho `Server`.
 - [x] O fluxo do Google está configurado com PKCE.
 - [x] Fechar a aba no minuto 20 credita exatamente 20 minutos; fechar no minuto 3 credita 0.
-- [ ] Abrir o timer em duas abas: a segunda assume, a primeira avisa e para de pontuar.
+- [x] Abrir o timer em duas abas: a segunda assume, a primeira avisa e para de pontuar.
 - [x] Manipular o relógio do sistema não altera minuto algum.
 - [x] Baixar a meta às 23h não salva a streak do dia; a nova meta aparece só amanhã.
 - [x] Dia sem meta batida consome 1 freeze e mantém a streak; sem freeze, zera.
@@ -530,16 +530,16 @@ fechamento diário, streak, congelamentos com ledger, estatísticas pessoais e g
 - [x] Visitante anônimo continua sem chamada alguma de sessão: iniciar, abandonar e concluir não tocam a API.
 - [x] Iniciar o ciclo com sessão de pé abre a sessão no servidor, e o tempo restante exibido passa a vir dos
       instantes que o servidor carimbou, não do relógio da máquina.
-- [ ] Enquanto o foco corre, o heartbeat sai a cada 30s; aba em segundo plano não deixa a cadeia arrebentar
+- [x] Enquanto o foco corre, o heartbeat sai a cada 30s; aba em segundo plano não deixa a cadeia arrebentar
       antes dos 90s.
 - [x] Concluir o ciclo chama `complete`, e o dia mostrado passa a ser o que a API devolveu.
 - [x] Abandonar chama `abandon` e mostra o parcial que o servidor creditou — inclusive o zero de quem parou
       antes dos 5 minutos.
-- [ ] `session_expired` no heartbeat encerra o ciclo na tela com mensagem traduzida, sem quebrar.
+- [x] `session_expired` no heartbeat encerra o ciclo na tela com mensagem traduzida, sem quebrar.
 - [ ] Recarregar no meio do foco recupera a sessão por `GET /sessions/active` e volta com o tempo certo.
 - [x] Falha na conversa com o servidor não derruba o ciclo: não conseguindo abrir nem fechar a sessão, o
       timer começa e encerra pelo relógio local, como o do anônimo.
-- [ ] Falha de rede num heartbeat não derruba o ciclo: a tela continua contando e o batimento seguinte reata.
+- [x] Falha de rede num heartbeat não derruba o ciclo: a tela continua contando e o batimento seguinte reata.
 - [x] O dia de quem está logado vem de `GET /stats/today` — pomodoros, minutos e meta —, e o histórico local
       nunca é somado a ele.
 - [x] Enquanto o dia da conta não chega, a tela não mostra o histórico local no lugar dele — nem por um

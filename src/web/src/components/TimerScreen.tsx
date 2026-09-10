@@ -11,6 +11,7 @@ import { SUPPORTED_LANGUAGES } from '../i18n'
 import { THEME_PREFERENCES } from '../lib/theme'
 import { createBrowserAlerts, type AlertPorts } from '../lib/alerts'
 import { formatDuration } from '../lib/formatDuration'
+import { problemMessageKey } from '../lib/problemMessage'
 
 const browserAlerts = createBrowserAlerts()
 
@@ -110,6 +111,18 @@ export function TimerScreen({
           className="rounded-lg bg-amber-100 px-4 py-2 text-sm text-amber-900 dark:bg-amber-900/40 dark:text-amber-100"
         >
           {t('offline.banner')}
+        </p>
+      )}
+
+      {servidor.lostSession && (
+        // `role="alert"` como o aviso de offline, e nunca junto dele: sem rede
+        // não sai batida, e sem batida não há 409 para avisar.
+        <p
+          role="alert"
+          data-testid="session-lost"
+          className="rounded-lg bg-amber-100 px-4 py-2 text-sm text-amber-900 dark:bg-amber-900/40 dark:text-amber-100"
+        >
+          {t(problemMessageKey(servidor.lostSession))}
         </p>
       )}
 
